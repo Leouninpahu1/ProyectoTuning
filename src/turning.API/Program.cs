@@ -74,6 +74,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseExceptionHandling();
+app.UseWebSockets();
 app.UseHttpsRedirection();
 app.UseCors("AllowSpecific");
 app.UseAuthentication();

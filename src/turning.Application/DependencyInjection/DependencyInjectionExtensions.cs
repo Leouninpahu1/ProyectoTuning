@@ -25,6 +25,9 @@ public static class DependencyInjectionExtensions
         services.AddScoped<IConversationTurnService, ConversationTurnService>();
         services.AddScoped<IExperimentSessionService, ExperimentSessionService>();
 
+        // Enriched response factory for RF-EXP-04 feature slice
+        services.AddScoped<Turning.Application.Features.EnrichedResponse.IEnrichedResponseFactory, Turning.Application.Features.EnrichedResponse.EnrichedResponseFactory>();
+
         return services;
     }
 }
