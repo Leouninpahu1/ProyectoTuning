@@ -38,6 +38,10 @@ public static class DependencyInjectionExtensions
         services.AddScoped<IPasswordHasherService, PasswordHasherService>();
         services.AddScoped<ITokenService, JwtTokenService>();
 
+        // WebSocket infrastructure for enriched-response feature
+        services.AddSingleton<Turning.Infrastructure.WebSockets.WebSocketConnectionManager>();
+        services.AddScoped<Turning.Application.Interfaces.IWebSocketTransport, Turning.Infrastructure.WebSockets.WebSocketTransport>();
+
         // Aquí se registrarían otros servicios de infraestructura:
         // - DbContext
         // - Unit of Work
