@@ -24,19 +24,37 @@ public static class DependencyInjectionExtensions
     {
         var connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? "Data Source=turning.db";
-
+        var useSqlServer = connectionString.Contains("Server=", StringComparison.OrdinalIgnoreCase)
+            || connectionString.Contains("Initial Catalog", StringComparison.OrdinalIgnoreCase)
+            || (connectionString.Contains("Data Source=", StringComparison.OrdinalIgnoreCase)
+                && !connectionString.Contains(".db", StringComparison.OrdinalIgnoreCase));
         services.AddDbContext<TurningDbContext>(options =>
-            options.UseSqlite(connectionString));
+        {
+            if (useSqlServer)
+                options.UseSqlServer(connectionString, sql => sql.EnableRetryOnFailure());
+            else
+                options.UseSqlite(connectionString);
+        });
 
         // Registra los repositorios
         // IMPORTANTE: En producción, reemplaza InMemorySampleRepository con una implementación real
         services.AddScoped<IConversationTurnRepository, ConversationTurnRepository>();
         services.AddScoped<ISampleRepository, InMemorySampleRepository>();
         services.AddScoped<IExperimentSessionRepository, ExperimentSessionRepository>();
+        services.AddScoped<IAssignmentService, Services.BalancedAssignmentService>();
         services.AddScoped<ITextGenerationPort, RuleBasedTextGenerationAdapter>();
+        services.AddScoped<IEmotionAnalysisPort, AI.MockEmotionAnalysisAdapter>();
+        services.AddScoped<Turning.Application.Features.Emotions.IEmotionService, Services.EmotionService>();
+        services.AddScoped<Turning.Application.Features.Emotions.IAvatarService, Services.AvatarService>();
+        services.AddScoped<Turning.Application.Features.Surveys.ISurveyService, Services.SurveyAppService>();
+        services.AddScoped<Turning.Application.Features.Events.IEventService, Services.EventService>();
+        services.AddScoped<Turning.Application.Features.Events.IResultsService, Services.ResultsService>();
         services.AddScoped<IUserAccountRepository, UserAccountRepository>();
         services.AddScoped<IPasswordHasherService, PasswordHasherService>();
         services.AddScoped<ITokenService, JwtTokenService>();
+        services.Configure<Turning.Application.Features.ExperimentSessions.SessionOptions>(configuration.GetSection("Session"));
+        services.Configure<Turning.Infrastructure.Services.SessionOptions>(configuration.GetSection("Session"));
+        services.AddHostedService<Services.SessionSchedulerService>();
 
         // Aquí se registrarían otros servicios de infraestructura:
         // - DbContext

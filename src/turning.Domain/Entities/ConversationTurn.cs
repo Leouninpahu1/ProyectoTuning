@@ -42,10 +42,8 @@ public sealed class ConversationTurn : BaseEntity
     /// </summary>
     public ConversationActor Sender { get; private set; }
 
-    /// <summary>
-    /// Contenido textual del mensaje.
-    /// </summary>
     public string Message { get; private set; } = string.Empty;
+    public Guid? OriginatingTurnId { get; private set; }
 
     /// <summary>
     /// Crea un turno de conversación validado y persistible.

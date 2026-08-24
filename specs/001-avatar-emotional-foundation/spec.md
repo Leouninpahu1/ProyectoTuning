@@ -1,108 +1,74 @@
-# Feature Specification: Avatar Emotional Experiment Foundation
+# 001 — Fundación del experimento de avatar emocional
 
-**Feature Branch**: `[001-avatar-emotional-foundation]`  
-**Created**: 2026-04-30  
-**Status**: Draft  
-**Input**: User description: "Base inicial derivada del C4 del Sistema Experimental de Avatar Emocional para organizar módulos, límites y slices dentro de Clean Architecture y Spec Kit."
+## Propósito
 
-## User Scenarios & Testing *(mandatory)*
+Definir la arquitectura, el vocabulario y el flujo mínimo común para ejecutar un ensayo conversacional con condición Humano o IA, registrar emociones, actualizar un avatar y cerrar con una encuesta.
 
-### User Story 1 - Ejecutar un ensayo conversacional completo (Priority: P1)
+Esta especificación es normativa para las especificaciones 002–009. No implementa cada módulo; define sus límites y contratos compartidos.
 
-Como participante del experimento, necesito completar un ensayo conversacional con un avatar emocional, de forma que pueda interactuar con el interlocutor y terminar el flujo con el cuestionario asociado.
+## Decisiones
 
-**Why this priority**: Es el flujo principal del producto. Sin un ensayo completo no existe experimento, ni datos, ni validación del resto de módulos.
+- Plataforma: .NET 10, ASP.NET Core, Blazor Web App y Clean Architecture.
+- Persistencia oficial: SQL Server mediante `TurningDbContext`, proveedor de EF Core para SQL Server y migraciones.
+- SQLite es opcional para pruebas, prototipos o buffer local de interacciones; no sustituye SQL Server ni contiene la fuente oficial de sesiones, resultados o auditoría.
+- Proveedores externos: OpenAI y Hume AI se representan mediante puertos en Application y adaptadores en Infrastructure. La primera versión puede usar adaptadores simulados.
+- Comunicación web: HTTP API. Tiempo real se define en 009 y no permite acceso directo a infraestructura.
+- Agregado raíz: `ExperimentSession`.
+- La condición `Human` significa que la respuesta del interlocutor proviene de una persona; `AI` significa que la respuesta la genera el adaptador de IA. La condición no describe el avatar ni el proveedor de análisis emocional.
 
-**Independent Test**: Puede probarse iniciando una sesión, asignando una condición de ensayo, intercambiando mensajes por el cliente web y cerrando el flujo con cuestionarios persistidos.
+## Actores
 
-**Acceptance Scenarios**:
+- Participante: realiza el ensayo y responde la encuesta.
+- Investigador: consulta sesiones y resultados autorizados.
+- Administrador: administra cancelaciones y configuración.
+- Sistema: ejecuta asignación, análisis, temporizadores y persistencia.
 
-1. **Given** un participante inicia un ensayo, **When** el sistema crea la sesión y asigna la condición Humano o IA, **Then** el cliente recibe el estado inicial del experimento y puede comenzar la interacción.
-2. **Given** una sesión activa, **When** se completa el intercambio conversacional y se dispara el cierre del ensayo, **Then** el sistema entrega el cuestionario correspondiente y persiste las respuestas asociadas a la sesión.
+## Flujo principal
 
----
+1. El participante autenticado solicita una sesión.
+2. El backend crea la sesión y asigna `Human` o `AI`.
+3. La sesión se activa cuando sus precondiciones están satisfechas.
+4. Se registran turnos de conversación bajo `sessionId`.
+5. El sistema registra lecturas emocionales y deriva expresiones del avatar.
+6. Al completar, expirar o cancelar la sesión se entrega una encuesta.
+7. Las respuestas y resultados quedan consultables por sesión.
 
-### User Story 2 - Orquestar intervención de IA y emociones mediante APIs backend (Priority: P2)
+## Entidades comunes
 
-Como sistema experimental, necesito interceptar mensajes y señales multimodales para consultar servicios externos de IA y emociones, de forma que pueda generar respuestas y expresiones del avatar durante el ensayo.
+- `ExperimentSession`: identidad, condición, estado y timestamps.
+- `ConditionAssignment`: decisión de condición, estrategia y motivo.
+- `ConversationTurn`: mensaje ordenado de participante o interlocutor.
+- `EmotionReading`: lectura emocional normalizada asociada a sesión y, opcionalmente, turno.
+- `AvatarExpression`: expresión derivada de una emoción y sus parámetros.
+- `SurveyDefinition`, `SurveyQuestion`: definición versionada del cuestionario.
+- `SurveyResponse`, `SurveyAnswer`: respuestas del participante.
+- `ExperimentResult`: vista/materialización consultable de los datos del ensayo.
+- `DegradedEvent`: fallo o degradación de una integración, asociado a una sesión y sin datos sensibles.
 
-**Why this priority**: El valor diferencial del sistema está en la suplantación parcial del interlocutor y en la traducción de emociones a comportamiento del avatar.
+## Requisitos funcionales
 
-**Independent Test**: Puede probarse enviando texto y frames de video desde el cliente web mediante llamadas a la API, verificando que el backend consulta adaptadores externos y devuelve respuestas y estado consumibles por el frontend.
+- **FR-001**: El sistema debe crear sesiones identificables y asociarlas a un usuario autenticado.
+- **FR-002**: El backend debe asignar exactamente una condición `Human` o `AI` por sesión.
+- **FR-003**: El cliente web debe consumir únicamente endpoints de `src/turning.API`.
+- **FR-004**: El sistema debe persistir turnos, asignaciones, lecturas emocionales, expresiones, respuestas y resultados con referencia a la sesión.
+- **FR-005**: El sistema debe mantener los puertos de IA y emociones en Application y los adaptadores concretos en Infrastructure.
+- **FR-006**: Un fallo externo debe conservar la sesión y registrar un resultado degradado o error trazable.
+- **FR-007**: Cada módulo debe tener pruebas unitarias y de integración para sus criterios de aceptación.
+- **FR-008**: Todo resultado degradado debe persistir `SessionId`, tipo de operación, código, mensaje seguro, timestamp UTC y si permite reintento.
+- **FR-009**: Los eventos degradados deben persistirse en `ExperimentEvents` como eventos de tipo `DegradedOperation`, usando los mismos campos y retención que los demás eventos.
 
-**Acceptance Scenarios**:
+## No objetivos de 001
 
-1. **Given** una sesión requiere intervención de IA, **When** el backend recibe el contexto conversacional a través de la API, **Then** solicita una respuesta al adaptador de generación de texto y devuelve el resultado al cliente web mediante la misma capa API.
-2. **Given** el cliente envía frames de video o audio para análisis a través de la API, **When** el backend procesa la solicitud, **Then** consulta el puerto de análisis emocional y devuelve datos de expresión facial utilizables por el avatar.
+- Definir el algoritmo 50/50 de asignación; corresponde a 003.
+- Definir el formato detallado de emociones; corresponde a 004.
+- Definir la tabla de expresiones; corresponde a 005.
+- Definir preguntas concretas de encuesta; corresponde a 006.
+- Definir métricas y exportación; corresponde a 008.
+- Definir transporte de eventos en tiempo real; corresponde a 009.
 
----
+## Criterios de aceptación
 
-### User Story 3 - Registrar trazabilidad experimental y resultados (Priority: P3)
-
-Como investigador, necesito que el sistema almacene conversaciones, asignaciones, emociones detectadas, respuestas generadas y cuestionarios, de forma que los resultados del experimento sean analizables después.
-
-**Why this priority**: El experimento pierde validez si no existe persistencia consistente de los eventos y resultados observados.
-
-**Independent Test**: Puede probarse ejecutando un ensayo de extremo a extremo y verificando que cada evento principal queda asociado a una sesión recuperable desde persistencia.
-
-**Acceptance Scenarios**:
-
-1. **Given** una sesión activa con intercambio de mensajes, **When** se generan turnos, emociones o respuestas de IA, **Then** cada evento queda persistido con referencia a la sesión y su condición experimental.
-2. **Given** un ensayo finalizado, **When** se consulta el historial por identificador de sesión, **Then** el sistema devuelve conversación, asignación, expresiones y cuestionarios relacionados.
-
----
-
-## Edge Cases
-
-- ¿Qué ocurre si OpenAI o Hume AI no responden dentro del tiempo esperado durante una sesión activa?
-- ¿Cómo debe recuperarse el cliente web cuando una llamada API falla o expira durante una sesión activa?
-- ¿Qué ocurre si el participante niega permisos de cámara o micrófono pero el ensayo requiere análisis emocional?
-- ¿Cómo se comporta el sistema si una sesión intenta cerrarse sin haber contestado el cuestionario obligatorio?
-- ¿Qué sucede si la base de asociaciones emoción-expresión no tiene una coincidencia para la emoción detectada?
-
-## Requirements *(mandatory)*
-
-### Functional Requirements
-
-- **FR-001**: The system MUST iniciar y administrar sesiones experimentales identificables de extremo a extremo.
-- **FR-002**: The system MUST asignar a cada ensayo una condición experimental explícita entre Humano e IA.
-- **FR-003**: The system MUST exponer un cliente web capaz de renderizar chat, capturar video, mostrar cuestionarios y reproducir animación del avatar.
-- **FR-004**: The system MUST hacer que el cliente web consuma el backend exclusivamente a través de endpoints API expuestos por `src/turning.API`.
-- **FR-005**: The system MUST interceptar contexto conversacional para decidir cuándo delegar la respuesta a IA.
-- **FR-006**: The system MUST integrar un puerto de generación de texto desacoplado de su proveedor concreto.
-- **FR-007**: The system MUST integrar un puerto de análisis emocional desacoplado de su proveedor concreto.
-- **FR-008**: The system MUST traducir resultados emocionales a expresiones faciales o parámetros de animación del avatar.
-- **FR-009**: The system MUST administrar el ciclo de vida de cuestionarios, incluyendo entrega, captura de respuestas y persistencia.
-- **FR-010**: The system MUST persistir conversaciones, eventos emocionales, respuestas generadas, asignaciones y cuestionarios por sesión.
-- **FR-011**: The system MUST exponer puntos de entrada backend API para presentación, orquestación de experimento, persistencia e integraciones externas, sin acceso directo del frontend a infraestructura o servicios externos.
-- **FR-012**: The system MUST permitir degradación controlada cuando un servicio externo falle, sin perder la sesión activa ni su trazabilidad.
-- **FR-013**: The system MUST mapear cada módulo del C4 a uno o más proyectos existentes en `src/turning.Domain`, `src/turning.Application`, `src/turning.Infrastructure`, `src/turning.API` y `src/turning.Web`.
-- **FR-014**: The system MUST keep puertos, adaptadores y servicios de orquestación aislados según la dirección de dependencias de Clean Architecture.
-- **FR-015**: The system MUST dejar explícitos los gaps aún no resueltos del C4 antes de pasar a plan y tasks.
-
-### Key Entities *(include if feature involves data)*
-
-- **ExperimentSession**: Representa un ensayo activo o finalizado, incluyendo participante, estado, timestamps y condición experimental.
-- **ConditionAssignment**: Representa la decisión de asignar a un ensayo la condición Humano o IA y su estrategia de balanceo.
-- **ConversationTurn**: Representa cada intervención textual o multimodal intercambiada durante la conversación.
-- **EmotionReading**: Representa el resultado de análisis emocional derivado de video o audio asociado a un instante o turno.
-- **AvatarExpressionMapping**: Representa la asociación entre una emoción detectada y la expresión o parámetros de animación del avatar.
-- **SurveyDefinition**: Representa un cuestionario definido por el experimento y sus preguntas.
-- **SurveyResponse**: Representa las respuestas entregadas por el participante al finalizar o durante el ensayo.
-
-## Success Criteria *(mandatory)*
-
-### Measurable Outcomes
-
-- **SC-001**: Un ensayo puede ejecutarse de extremo a extremo con creación de sesión, intercambio conversacional y cierre con cuestionario sin intervención manual sobre la base de datos.
-- **SC-002**: El sistema puede persistir el 100% de los eventos clave de una sesión validada: asignación, turnos de conversación, respuestas generadas y respuestas de cuestionario.
-- **SC-003**: Una validación funcional puede demostrar que el cliente web recibe por API tanto mensajes de chat como datos de expresión facial durante una sesión activa.
-- **SC-004**: Cuando falle una integración externa, la sesión conserva su identificador, su estado experimental y un error trazable sin abortar silenciosamente el flujo.
-
-## Assumptions
-
-- El diagrama usa tecnologías de referencia como React, Vue, Java o Python, pero la implementación base en este repositorio se aterriza sobre .NET 10, ASP.NET Core y Blazor porque esa es la plataforma ya elegida.
-- El mismo cliente web puede ser usado por participante e interlocutor humano, aunque en refinamientos posteriores puede dividirse en experiencias separadas si los requisitos lo exigen.
-- La persistencia objetivo será relacional, alineada con PostgreSQL en el C4, aunque el repositorio actual aún tenga placeholders en memoria.
-- El frontend en `src/turning.Web` consumirá únicamente la capa API de `src/turning.API`; no accederá directamente a base de datos, adaptadores externos ni repositorios.
-- Los requisitos detallados del levantamiento posterior refinarán nombres finales de entidades, validaciones y reglas de negocio, pero no deberían romper estos límites arquitectónicos base.
+- **CA-001**: Todas las especificaciones posteriores usan los nombres `Human`, `AI`, `Created`, `Active`, `Completed`, `TimedOut` y `Cancelled`.
+- **CA-002**: Todas las entidades de ejecución requieren un `ExperimentSession` existente; las definiciones reutilizables de encuestas pueden existir sin sesión.
+- **CA-003**: SQL Server es la fuente oficial de persistencia; SQLite solo puede utilizarse como soporte local no autoritativo para interacciones.
+- **CA-004**: El flujo completo puede rastrearse desde sesión hasta resultado usando `sessionId`.

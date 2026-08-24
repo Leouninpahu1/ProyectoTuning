@@ -45,10 +45,13 @@ public sealed class ExperimentSessionSnapshot
     /// </summary>
     public string? LastDetectedEmotion { get; init; }
 
-    /// <summary>
-    /// Marca de tiempo de creación en UTC.
-    /// </summary>
     public DateTime CreatedAtUtc { get; init; }
+    public DateTime? ActivatedAtUtc { get; init; }
+    public DateTime? ExpiresAtUtc { get; init; }
+    public DateTime? LastActivityAtUtc { get; init; }
+    public DateTime? CompletedAtUtc { get; init; }
+    public DateTime? CancelledAtUtc { get; init; }
+    public string? CancellationReason { get; init; }
 
     /// <summary>
     /// Indica si la conversación ya puede comenzar.
@@ -60,8 +63,12 @@ public sealed class ExperimentSessionSnapshot
     /// </summary>
     public required string EmotionStage { get; init; }
 
-    /// <summary>
-    /// Indica el estado inicial del avatar.
-    /// </summary>
     public required string AvatarStage { get; init; }
+}
+public sealed class PagedSessionsResult
+{
+    public required List<ExperimentSessionSnapshot> Items { get; init; }
+    public int Total { get; init; }
+    public int Page { get; init; }
+    public int PageSize { get; init; }
 }

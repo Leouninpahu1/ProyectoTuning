@@ -22,8 +22,8 @@ public interface IExperimentSessionRepository
     /// </summary>
     Task<ExperimentSession?> GetLatestByOwnerAsync(Guid ownerUserId, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Guarda cambios pendientes.
-    /// </summary>
+    Task<List<ExperimentSession>> ListByOwnerAsync(Guid ownerUserId, int page, int pageSize, CancellationToken ct = default);
+    Task<int> CountByOwnerAsync(Guid ownerUserId, CancellationToken ct = default);
+    Task<ExperimentSession?> GetByCodeAsync(string code, CancellationToken ct = default);
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
 }

@@ -43,9 +43,11 @@ public sealed class ExperimentSessionRepository : IExperimentSessionRepository
             .FirstOrDefaultAsync(cancellationToken);
     }
 
-    /// <inheritdoc />
-    public Task SaveChangesAsync(CancellationToken cancellationToken = default)
-    {
-        return _dbContext.SaveChangesAsync(cancellationToken);
-    }
+    public Task<List<ExperimentSession>> ListByOwnerAsync(Guid ownerUserId, int page, int pageSize, CancellationToken ct = default)
+        => _dbContext.ExperimentSessions.Where(s => s.OwnerUserId == ownerUserId && !s.IsDeleted).OrderByDescending(s => s.CreatedAt).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
+    public Task<int> CountByOwnerAsync(Guid ownerUserId, CancellationToken ct = default)
+        => _dbContext.ExperimentSessions.CountAsync(s => s.OwnerUserId == ownerUserId && !s.IsDeleted, ct);
+    public Task<ExperimentSession?> GetByCodeAsync(string code, CancellationToken ct = default)
+        => _dbContext.ExperimentSessions.FirstOrDefaultAsync(s => s.SessionCode == code && !s.IsDeleted, ct);
+    public Task SaveChangesAsync(CancellationToken cancellationToken = default) => _dbContext.SaveChangesAsync(cancellationToken);
 }

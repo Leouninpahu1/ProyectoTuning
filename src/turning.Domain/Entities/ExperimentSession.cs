@@ -1,134 +1,128 @@
 using Turning.Domain.Common;
+using Turning.Domain.Exceptions;
 
 namespace Turning.Domain.Entities;
 
-/// <summary>
-/// Condición experimental base para una sesión.
-/// </summary>
 public enum ExperimentalCondition
 {
-    /// <summary>
-    /// La sesión se asigna a un interlocutor humano.
-    /// </summary>
     Human = 1,
-
-    /// <summary>
-    /// La sesión se asigna a un interlocutor basado en IA.
-    /// </summary>
     AI = 2
 }
 
-/// <summary>
-/// Estado de alto nivel de una sesión experimental.
-/// </summary>
 public enum ExperimentSessionStatus
 {
-    /// <summary>
-    /// La sesión existe y ya puede iniciar conversación, emociones y avatar.
-    /// </summary>
+    Created = 1,
     Bootstrapped = 1,
-
-    /// <summary>
-    /// La sesión se encuentra en ejecución activa.
-    /// </summary>
     Active = 2,
-
-    /// <summary>
-    /// La sesión fue cerrada de forma controlada.
-    /// </summary>
-    Completed = 3
+    Completed = 3,
+    TimedOut = 4,
+    Cancelled = 5
 }
 
-/// <summary>
-/// Representa una sesión experimental autenticada y persistida.
-/// </summary>
 public sealed class ExperimentSession : BaseEntity
 {
-    private ExperimentSession()
-    {
-    }
+    private ExperimentSession() { }
 
-    /// <summary>
-    /// Identificador del usuario autenticado que abrió la sesión.
-    /// </summary>
     public Guid OwnerUserId { get; private set; }
-
-    /// <summary>
-    /// Código corto legible para referenciar la sesión.
-    /// </summary>
     public string SessionCode { get; private set; } = string.Empty;
-
-    /// <summary>
-    /// Condición experimental asignada.
-    /// </summary>
     public ExperimentalCondition Condition { get; private set; }
-
-    /// <summary>
-    /// Estado actual de la sesión.
-    /// </summary>
     public ExperimentSessionStatus Status { get; private set; }
-
-    /// <summary>
-    /// Estado base del avatar asociado a la sesión.
-    /// </summary>
     public string AvatarState { get; private set; } = string.Empty;
-
-    /// <summary>
-    /// Última emoción detectada dentro de la sesión.
-    /// </summary>
     public string? LastDetectedEmotion { get; private set; }
-
-    /// <summary>
-    /// Número de turnos conversacionales registrados.
-    /// </summary>
     public int ConversationTurnCount { get; private set; }
-
-    /// <summary>
-    /// Número de muestras emocionales registradas.
-    /// </summary>
     public int EmotionSampleCount { get; private set; }
+    public DateTime? ActivatedAtUtc { get; private set; }
+    public DateTime? ExpiresAtUtc { get; private set; }
+    public DateTime? LastActivityAtUtc { get; private set; }
+    public DateTime? CompletedAtUtc { get; private set; }
+    public DateTime? CancelledAtUtc { get; private set; }
+    public string? CancellationReason { get; private set; }
+    public byte[] RowVersion { get; private set; } = [0];
 
-    /// <summary>
-    /// Crea una sesión experimental en estado inicial.
-    /// </summary>
-    public static ExperimentSession Create(Guid ownerUserId, ExperimentalCondition condition)
+    public static ExperimentSession Create(Guid ownerUserId, ExperimentalCondition condition, TimeSpan? duration = null, Guid? explicitId = null)
     {
         if (ownerUserId == Guid.Empty)
             throw new ArgumentException("El identificador del usuario es obligatorio.", nameof(ownerUserId));
-
-        var sessionId = Guid.NewGuid();
-
+        var sid = explicitId ?? Guid.NewGuid();
         return new ExperimentSession
         {
-            Id = sessionId,
+            Id = sid,
             OwnerUserId = ownerUserId,
-            SessionCode = BuildSessionCode(sessionId),
+            SessionCode = BuildSessionCode(sid),
             Condition = condition,
-            Status = ExperimentSessionStatus.Bootstrapped,
+            Status = ExperimentSessionStatus.Created,
             AvatarState = "Neutral",
-            ConversationTurnCount = 0,
-            EmotionSampleCount = 0,
             CreatedAt = DateTime.UtcNow
         };
     }
 
-    /// <summary>
-    /// Registra actividad conversacional en la sesión y la marca como activa.
-    /// </summary>
-    public void RegisterConversationTurn()
+    public void Activate(TimeSpan duration, DateTime? nowUtc = null)
     {
+        if (Status != ExperimentSessionStatus.Created)
+            throw new DomainException($"Solo Created puede activarse. Estado actual: {Status}");
+        var now = nowUtc ?? DateTime.UtcNow;
+        Status = ExperimentSessionStatus.Active;
+        ActivatedAtUtc = now;
+        LastActivityAtUtc = now;
+        ExpiresAtUtc = now.Add(duration);
+        UpdatedAt = now;
+    }
+
+    public void RecordActivity(DateTime? nowUtc = null)
+    {
+        if (Status != ExperimentSessionStatus.Active) return;
+        var now = nowUtc ?? DateTime.UtcNow;
+        LastActivityAtUtc = now;
+        UpdatedAt = now;
+    }
+
+    public void RegisterConversationTurn(DateTime? nowUtc = null)
+    {
+        if (Status == ExperimentSessionStatus.Created) Activate(TimeSpan.FromSeconds(300), nowUtc);
+        else EnsureActive();
         ConversationTurnCount++;
-
-        if (Status == ExperimentSessionStatus.Bootstrapped)
-        {
-            Status = ExperimentSessionStatus.Active;
-        }
-
-        UpdatedAt = DateTime.UtcNow;
+        RecordActivity(nowUtc);
     }
 
-    private static string BuildSessionCode(Guid sessionId)
+    public void Complete(DateTime? nowUtc = null)
     {
-        return $"EXP-{sessionId.ToString("N")[..8].ToUpperInvariant()}";
+        EnsureActive();
+        var now = nowUtc ?? DateTime.UtcNow;
+        Status = ExperimentSessionStatus.Completed;
+        CompletedAtUtc = now;
+        UpdatedAt = now;
     }
+
+    public void Expire(DateTime? nowUtc = null)
+    {
+        EnsureActive();
+        var now = nowUtc ?? DateTime.UtcNow;
+        Status = ExperimentSessionStatus.TimedOut;
+        CompletedAtUtc = now;
+        UpdatedAt = now;
+    }
+
+    public void Cancel(string reason, DateTime? nowUtc = null)
+    {
+        if (Status != ExperimentSessionStatus.Created && Status != ExperimentSessionStatus.Active)
+            throw new DomainException($"Solo Created/Active puede cancelarse. Estado: {Status}");
+        if (string.IsNullOrWhiteSpace(reason))
+            throw new ArgumentException("Motivo obligatorio.", nameof(reason));
+        var now = nowUtc ?? DateTime.UtcNow;
+        Status = ExperimentSessionStatus.Cancelled;
+        CancellationReason = reason.Trim();
+        CancelledAtUtc = now;
+        UpdatedAt = now;
+    }
+
+    public void IncrementEmotionSample(){ EmotionSampleCount++; UpdatedAt=DateTime.UtcNow; LastActivityAtUtc=DateTime.UtcNow; }
+    public bool IsTerminal => Status is ExperimentSessionStatus.Completed or ExperimentSessionStatus.TimedOut or ExperimentSessionStatus.Cancelled;
+
+    private void EnsureActive()
+    {
+        if (Status != ExperimentSessionStatus.Active)
+            throw new DomainException($"Operación solo válida en Active. Estado: {Status}");
+    }
+
+    private static string BuildSessionCode(Guid sid) => $"EXP-{sid.ToString("N")[..8].ToUpperInvariant()}";
 }

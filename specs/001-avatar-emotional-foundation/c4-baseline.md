@@ -210,10 +210,16 @@ Implementa chat, captura multimodal, visualización emocional y renderizado del 
 - Restricción arquitectónica vigente: `src/turning.Web` se conecta únicamente a `src/turning.API`; cualquier necesidad futura de actualización incremental debe seguir entrando por esa misma frontera API.
 - La solución actual aún tiene placeholders (`ISampleRepository`, `InMemorySampleRepository`). Esa superficie debe reemplazarse progresivamente por módulos de experimento reales en lugar de convivir con dos modelos conceptuales.
 
-## Open Questions To Clarify With Requirements
+## Refinamientos posteriores no bloqueantes
 
-- ¿El interlocutor humano usa exactamente la misma Web App del participante o requiere una vista separada?
-- ¿El análisis emocional será solo sobre video, o también sobre audio?
-- ¿Las preguntas del cuestionario son fijas por experimento o administrables desde backoffice?
-- ¿La intervención de IA es total, parcial o condicionada por reglas experimentales configurables?
-- ¿Qué nivel de trazabilidad y anonimización necesita la persistencia para participantes y sesiones?
+Decisiones cerradas para esta versión:
+
+- `Human` identifica un interlocutor humano y `AI` una respuesta generada por IA; no son estados del avatar ni del análisis emocional.
+- El cliente usa HTTP API en la primera versión; el transporte de eventos de 009 usa polling y queda preparado para SignalR.
+- La persistencia oficial de esta fase es SQL Server con EF Core. SQLite puede usarse como buffer local de interacciones o proveedor de pruebas, pero SQL Server conserva la fuente de verdad.
+
+- La primera versión puede usar la misma Web App; una vista separada para el interlocutor queda como evolución.
+- Se admiten señales de video, audio o texto según el adaptador disponible; el contrato normalizado es el mismo.
+- Las preguntas se versionan en SurveyDefinition; un backoffice para administrarlas queda fuera de esta entrega.
+- La condición AI implica respuesta generada por IA en el flujo orquestado; reglas de intervención más finas quedan como evolución.
+- La persistencia debe mantener trazabilidad por SessionId y evitar PII en logs; una política de anonimización avanzada queda como evolución.

@@ -56,7 +56,10 @@ public class InfrastructureIntegrationTests : IDisposable
     {
         // Arrange
         var repository = new ExperimentSessionRepository(_dbContext);
-        var ownerUserId = Guid.NewGuid();
+        var owner = UserAccount.Create("owner@example.com", "Session Owner", "hash-value");
+        _dbContext.UserAccounts.Add(owner);
+        await _dbContext.SaveChangesAsync();
+        var ownerUserId = owner.Id;
         var olderSession = ExperimentSession.Create(ownerUserId, ExperimentalCondition.Human);
         var newerSession = ExperimentSession.Create(ownerUserId, ExperimentalCondition.AI);
 
@@ -81,7 +84,10 @@ public class InfrastructureIntegrationTests : IDisposable
         // Arrange
         var sessionRepository = new ExperimentSessionRepository(_dbContext);
         var conversationRepository = new ConversationTurnRepository(_dbContext);
-        var session = ExperimentSession.Create(Guid.NewGuid(), ExperimentalCondition.AI);
+        var owner = UserAccount.Create("conversation-owner@example.com", "Conversation Owner", "hash-value");
+        _dbContext.UserAccounts.Add(owner);
+        await _dbContext.SaveChangesAsync();
+        var session = ExperimentSession.Create(owner.Id, ExperimentalCondition.AI);
 
         await sessionRepository.AddAsync(session);
         await sessionRepository.SaveChangesAsync();

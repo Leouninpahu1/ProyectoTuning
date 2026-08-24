@@ -1,5 +1,6 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using Turning.API.Extensions;
@@ -60,7 +61,8 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<TurningDbContext>();
-    dbContext.Database.EnsureCreated();
+    dbContext.Database.Migrate();
+    await Turning.Infrastructure.Persistence.TurningDbSeeder.SeedAsync(dbContext);
 }
 
 // Configurar middleware

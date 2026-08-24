@@ -54,6 +54,7 @@ public sealed class ConversationTurnService : IConversationTurnService
             throw new TurningApplicationException("El mensaje no puede superar los 4000 caracteres.", "CONVERSATION_MESSAGE_TOO_LONG");
 
         var session = await GetOwnedSessionAsync(ownerUserId, sessionId, cancellationToken);
+        if (session.IsTerminal) throw new TurningApplicationException("Sesión terminal no acepta nuevos turnos.", "SESSION_TERMINAL");
         var sender = ParseSender(request.Sender);
         var existingTurns = await _conversationTurnRepository.ListBySessionAsync(session.Id, cancellationToken);
         var turn = ConversationTurn.Create(session.Id, session.ConversationTurnCount + 1, sender, request.Message);
@@ -63,15 +64,19 @@ public sealed class ConversationTurnService : IConversationTurnService
 
         if (session.Condition == ExperimentalCondition.AI && sender == ConversationActor.Participant)
         {
-            var history = existingTurns.Concat([turn]).ToArray();
-            var generatedReply = await _textGenerationPort.GenerateInterlocutorReplyAsync(session, history, cancellationToken);
-
-            if (!string.IsNullOrWhiteSpace(generatedReply))
+            try
             {
-                var aiTurn = ConversationTurn.Create(session.Id, session.ConversationTurnCount + 1, ConversationActor.Interlocutor, generatedReply);
-                await _conversationTurnRepository.AddAsync(aiTurn, cancellationToken);
-                session.RegisterConversationTurn();
+                var history = existingTurns.Concat([turn]).ToArray();
+                var generatedReply = await _textGenerationPort.GenerateInterlocutorReplyAsync(session, history, cancellationToken);
+                if (!string.IsNullOrWhiteSpace(generatedReply))
+                {
+                    var aiTurn = ConversationTurn.Create(session.Id, session.ConversationTurnCount + 1, ConversationActor.Interlocutor, generatedReply);
+                    typeof(ConversationTurn).GetProperty("OriginatingTurnId")!.SetValue(aiTurn, turn.Id);
+                    await _conversationTurnRepository.AddAsync(aiTurn, cancellationToken);
+                    session.RegisterConversationTurn();
+                }
             }
+            catch (Exception) { /* degradado: turno participante conservado, IA no bloquea */ }
         }
 
         await _conversationTurnRepository.SaveChangesAsync(cancellationToken);

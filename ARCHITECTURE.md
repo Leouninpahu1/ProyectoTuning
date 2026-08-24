@@ -1,5 +1,7 @@
 # Turning - Solución Clean Architecture con .NET 10
 
+> **Fundación 001 (2026-08-24)**: Persistencia oficial **SQL Server** via `TurningDbContext.UseSqlServer()` (LocalDB `Turning`), **SQLite** solo como buffer local/dev/test no autoritativo (CA-003). Dual-provider en `DependencyInjectionExtensions`.
+
 Solución profesional desarrollada siguiendo **Clean Architecture**, **SOLID**, **DDD (Domain-Driven Design)** y buenas prácticas empresariales.
 
 ## 📋 Tabla de Contenidos
