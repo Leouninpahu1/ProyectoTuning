@@ -1,0 +1,98 @@
+SessionId,SessionCode,Condition,SequenceNumber,Sender,Message,CreatedAtUtc
+b03670ee-e716-409a-a087-65f016937764,EXP-6E93885D,Human,1,Participant,¿Qué opinas sobre la inteligencia artificial en la educación?,2026-08-20T09:00:20Z
+b03670ee-e716-409a-a087-65f016937764,EXP-6E93885D,Human,2,Interlocutor,"Creo que puede ayudar mucho, pero no debería reemplazar al profesor.",2026-08-20T09:00:40Z
+b03670ee-e716-409a-a087-65f016937764,EXP-6E93885D,Human,3,Participant,¿Cómo describirías tu día hasta ahora?,2026-08-20T09:01:00Z
+b03670ee-e716-409a-a087-65f016937764,EXP-6E93885D,Human,4,Interlocutor,"Ha sido tranquilo, estuve trabajando en un proyecto de la universidad.",2026-08-20T09:01:20Z
+b03670ee-e716-409a-a087-65f016937764,EXP-6E93885D,Human,5,Participant,¿Cuál es tu comida favorita y por qué?,2026-08-20T09:01:40Z
+b03670ee-e716-409a-a087-65f016937764,EXP-6E93885D,Human,6,Interlocutor,"Me gusta mucho la pasta, sobre todo si la prepara mi mamá.",2026-08-20T09:02:00Z
+26be5f4a-8574-493e-91b5-b78e64f9f5dc,EXP-6A7F59A5,Human,1,Participant,Cuéntame sobre un libro que te haya marcado.,2026-08-20T09:15:20Z
+26be5f4a-8574-493e-91b5-b78e64f9f5dc,EXP-6A7F59A5,Human,2,Interlocutor,"Leí uno sobre hábitos hace poco, me hizo repensar mi rutina diaria.",2026-08-20T09:15:40Z
+26be5f4a-8574-493e-91b5-b78e64f9f5dc,EXP-6A7F59A5,Human,3,Participant,¿Qué opinas sobre la inteligencia artificial en la educación?,2026-08-20T09:16:00Z
+26be5f4a-8574-493e-91b5-b78e64f9f5dc,EXP-6A7F59A5,Human,4,Interlocutor,"Creo que puede ayudar mucho, pero no debería reemplazar al profesor.",2026-08-20T09:16:20Z
+cd330fa6-2a60-4985-964f-a1d3dc6bc218,EXP-B84AAE6E,Human,1,Participant,¿Qué opinas de las redes sociales hoy en día?,2026-08-20T09:30:20Z
+cd330fa6-2a60-4985-964f-a1d3dc6bc218,EXP-B84AAE6E,Human,2,Interlocutor,"Tienen cosas buenas, pero a veces consumen demasiado tiempo.",2026-08-20T09:30:40Z
+cd330fa6-2a60-4985-964f-a1d3dc6bc218,EXP-B84AAE6E,Human,3,Participant,¿Cómo describirías tu día hasta ahora?,2026-08-20T09:31:00Z
+cd330fa6-2a60-4985-964f-a1d3dc6bc218,EXP-B84AAE6E,Human,4,Interlocutor,"Ha sido tranquilo, estuve trabajando en un proyecto de la universidad.",2026-08-20T09:31:20Z
+cd330fa6-2a60-4985-964f-a1d3dc6bc218,EXP-B84AAE6E,Human,5,Participant,¿Qué es lo que más valoras en una amistad?,2026-08-20T09:31:40Z
+cd330fa6-2a60-4985-964f-a1d3dc6bc218,EXP-B84AAE6E,Human,6,Interlocutor,La sinceridad y que estén presentes en los momentos difíciles.,2026-08-20T09:32:00Z
+b7db1d4e-bb27-4a72-8616-96792e869289,EXP-8DB83627,Human,1,Participant,¿Qué harías si tuvieras un día libre inesperado?,2026-08-20T09:45:20Z
+b7db1d4e-bb27-4a72-8616-96792e869289,EXP-8DB83627,Human,2,Interlocutor,Probablemente saldría a caminar y luego vería una película.,2026-08-20T09:45:40Z
+b7db1d4e-bb27-4a72-8616-96792e869289,EXP-8DB83627,Human,3,Participant,¿Qué es lo que más valoras en una amistad?,2026-08-20T09:46:00Z
+b7db1d4e-bb27-4a72-8616-96792e869289,EXP-8DB83627,Human,4,Interlocutor,La sinceridad y que estén presentes en los momentos difíciles.,2026-08-20T09:46:20Z
+7d850565-05f2-41eb-9d17-1edf7a8807c0,EXP-F1ED713C,Human,1,Participant,¿Qué harías si tuvieras un día libre inesperado?,2026-08-20T10:00:20Z
+7d850565-05f2-41eb-9d17-1edf7a8807c0,EXP-F1ED713C,Human,2,Interlocutor,Probablemente saldría a caminar y luego vería una película.,2026-08-20T10:00:40Z
+7d850565-05f2-41eb-9d17-1edf7a8807c0,EXP-F1ED713C,Human,3,Participant,¿Qué es lo que más valoras en una amistad?,2026-08-20T10:01:00Z
+7d850565-05f2-41eb-9d17-1edf7a8807c0,EXP-F1ED713C,Human,4,Interlocutor,La sinceridad y que estén presentes en los momentos difíciles.,2026-08-20T10:01:20Z
+7d850565-05f2-41eb-9d17-1edf7a8807c0,EXP-F1ED713C,Human,5,Participant,¿Qué opinas de las redes sociales hoy en día?,2026-08-20T10:01:40Z
+7d850565-05f2-41eb-9d17-1edf7a8807c0,EXP-F1ED713C,Human,6,Interlocutor,"Tienen cosas buenas, pero a veces consumen demasiado tiempo.",2026-08-20T10:02:00Z
+eb11de29-92ed-4a5d-a954-11937d9e45cb,EXP-4ED219D3,Human,1,Participant,¿Cómo crees que será la tecnología en 10 años?,2026-08-20T10:15:20Z
+eb11de29-92ed-4a5d-a954-11937d9e45cb,EXP-4ED219D3,Human,2,Interlocutor,Pienso que la IA estará mucho más integrada en la vida diaria.,2026-08-20T10:15:40Z
+eb11de29-92ed-4a5d-a954-11937d9e45cb,EXP-4ED219D3,Human,3,Participant,¿Cuál es tu comida favorita y por qué?,2026-08-20T10:16:00Z
+eb11de29-92ed-4a5d-a954-11937d9e45cb,EXP-4ED219D3,Human,4,Interlocutor,"Me gusta mucho la pasta, sobre todo si la prepara mi mamá.",2026-08-20T10:16:20Z
+eb11de29-92ed-4a5d-a954-11937d9e45cb,EXP-4ED219D3,Human,5,Participant,¿Cómo describirías tu día hasta ahora?,2026-08-20T10:16:40Z
+abe48ae2-0515-48c5-afa2-ab6422e5400e,EXP-3A026215,Human,1,Participant,¿Qué opinas de las redes sociales hoy en día?,2026-08-20T10:30:20Z
+abe48ae2-0515-48c5-afa2-ab6422e5400e,EXP-3A026215,Human,2,Interlocutor,"Tienen cosas buenas, pero a veces consumen demasiado tiempo.",2026-08-20T10:30:40Z
+abe48ae2-0515-48c5-afa2-ab6422e5400e,EXP-3A026215,Human,3,Participant,¿Cómo manejas el estrés en época de exámenes?,2026-08-20T10:31:00Z
+abe48ae2-0515-48c5-afa2-ab6422e5400e,EXP-3A026215,Human,4,Interlocutor,Trato de organizar mi tiempo con anticipación y descansar bien.,2026-08-20T10:31:20Z
+eb3656de-d5d7-4647-b58c-cbcc1eda46a3,EXP-D1A8C541,Human,1,Participant,¿Qué harías si tuvieras un día libre inesperado?,2026-08-20T10:45:20Z
+eb3656de-d5d7-4647-b58c-cbcc1eda46a3,EXP-D1A8C541,Human,2,Interlocutor,Probablemente saldría a caminar y luego vería una película.,2026-08-20T10:45:40Z
+eb3656de-d5d7-4647-b58c-cbcc1eda46a3,EXP-D1A8C541,Human,3,Participant,¿Cómo manejas el estrés en época de exámenes?,2026-08-20T10:46:00Z
+eb3656de-d5d7-4647-b58c-cbcc1eda46a3,EXP-D1A8C541,Human,4,Interlocutor,Trato de organizar mi tiempo con anticipación y descansar bien.,2026-08-20T10:46:20Z
+a5efe5dc-fa1c-4644-8878-447c3a72b51b,EXP-3574BB75,Human,1,Participant,¿Qué opinas de las redes sociales hoy en día?,2026-08-20T11:00:20Z
+a5efe5dc-fa1c-4644-8878-447c3a72b51b,EXP-3574BB75,Human,2,Interlocutor,"Tienen cosas buenas, pero a veces consumen demasiado tiempo.",2026-08-20T11:00:40Z
+a5efe5dc-fa1c-4644-8878-447c3a72b51b,EXP-3574BB75,Human,3,Participant,¿Qué opinas sobre la inteligencia artificial en la educación?,2026-08-20T11:01:00Z
+a5efe5dc-fa1c-4644-8878-447c3a72b51b,EXP-3574BB75,Human,4,Interlocutor,"Creo que puede ayudar mucho, pero no debería reemplazar al profesor.",2026-08-20T11:01:20Z
+08d651d1-32a0-4152-8cd8-94407e9d2187,EXP-A0DF1011,Human,1,Participant,¿Cómo crees que será la tecnología en 10 años?,2026-08-20T11:15:20Z
+08d651d1-32a0-4152-8cd8-94407e9d2187,EXP-A0DF1011,Human,2,Interlocutor,Pienso que la IA estará mucho más integrada en la vida diaria.,2026-08-20T11:15:40Z
+08d651d1-32a0-4152-8cd8-94407e9d2187,EXP-A0DF1011,Human,3,Participant,¿Cuál es tu comida favorita y por qué?,2026-08-20T11:16:00Z
+08d651d1-32a0-4152-8cd8-94407e9d2187,EXP-A0DF1011,Human,4,Interlocutor,"Me gusta mucho la pasta, sobre todo si la prepara mi mamá.",2026-08-20T11:16:20Z
+08d651d1-32a0-4152-8cd8-94407e9d2187,EXP-A0DF1011,Human,5,Participant,¿Cómo describirías tu día hasta ahora?,2026-08-20T11:16:40Z
+06e73db5-1ae1-4fb8-ab24-c3e88c9241ce,EXP-95652EEA,AI,1,Participant,"Si pudieras viajar a cualquier lugar, ¿a dónde irías?",2026-08-20T11:30:20Z
+06e73db5-1ae1-4fb8-ab24-c3e88c9241ce,EXP-95652EEA,AI,2,Interlocutor,"Me gustaría conocer Japón, su cultura me parece fascinante.",2026-08-20T11:30:40Z
+06e73db5-1ae1-4fb8-ab24-c3e88c9241ce,EXP-95652EEA,AI,3,Participant,¿Qué es lo que más valoras en una amistad?,2026-08-20T11:31:00Z
+06e73db5-1ae1-4fb8-ab24-c3e88c9241ce,EXP-95652EEA,AI,4,Interlocutor,La sinceridad y que estén presentes en los momentos difíciles.,2026-08-20T11:31:20Z
+06e73db5-1ae1-4fb8-ab24-c3e88c9241ce,EXP-95652EEA,AI,5,Participant,¿Qué opinas sobre la inteligencia artificial en la educación?,2026-08-20T11:31:40Z
+06e73db5-1ae1-4fb8-ab24-c3e88c9241ce,EXP-95652EEA,AI,6,Interlocutor,"Creo que puede ayudar mucho, pero no debería reemplazar al profesor.",2026-08-20T11:32:00Z
+5d3d91dc-6cd9-4e44-a792-de3190ff633e,EXP-40C212C8,AI,1,Participant,¿Qué es lo que más valoras en una amistad?,2026-08-20T11:45:20Z
+5d3d91dc-6cd9-4e44-a792-de3190ff633e,EXP-40C212C8,AI,2,Interlocutor,La sinceridad y que estén presentes en los momentos difíciles.,2026-08-20T11:45:40Z
+5d3d91dc-6cd9-4e44-a792-de3190ff633e,EXP-40C212C8,AI,3,Participant,¿Cuál es tu comida favorita y por qué?,2026-08-20T11:46:00Z
+5d3d91dc-6cd9-4e44-a792-de3190ff633e,EXP-40C212C8,AI,4,Interlocutor,"Me gusta mucho la pasta, sobre todo si la prepara mi mamá.",2026-08-20T11:46:20Z
+3ca004d3-f72e-4d95-b6bb-4b401c1e9ce9,EXP-7FA320B9,AI,1,Participant,¿Qué harías si tuvieras un día libre inesperado?,2026-08-20T12:00:20Z
+3ca004d3-f72e-4d95-b6bb-4b401c1e9ce9,EXP-7FA320B9,AI,2,Interlocutor,Probablemente saldría a caminar y luego vería una película.,2026-08-20T12:00:40Z
+3ca004d3-f72e-4d95-b6bb-4b401c1e9ce9,EXP-7FA320B9,AI,3,Participant,¿Qué opinas sobre la inteligencia artificial en la educación?,2026-08-20T12:01:00Z
+3ca004d3-f72e-4d95-b6bb-4b401c1e9ce9,EXP-7FA320B9,AI,4,Interlocutor,"Creo que puede ayudar mucho, pero no debería reemplazar al profesor.",2026-08-20T12:01:20Z
+3ca004d3-f72e-4d95-b6bb-4b401c1e9ce9,EXP-7FA320B9,AI,5,Participant,¿Cómo describirías tu día hasta ahora?,2026-08-20T12:01:40Z
+3ca004d3-f72e-4d95-b6bb-4b401c1e9ce9,EXP-7FA320B9,AI,6,Interlocutor,"Ha sido tranquilo, estuve trabajando en un proyecto de la universidad.",2026-08-20T12:02:00Z
+d02f02e7-22ed-427c-9fbe-1be6fdb799f4,EXP-7AF1BF78,AI,1,Participant,¿Cuál es tu comida favorita y por qué?,2026-08-20T12:15:20Z
+d02f02e7-22ed-427c-9fbe-1be6fdb799f4,EXP-7AF1BF78,AI,2,Interlocutor,"Me gusta mucho la pasta, sobre todo si la prepara mi mamá.",2026-08-20T12:15:40Z
+d02f02e7-22ed-427c-9fbe-1be6fdb799f4,EXP-7AF1BF78,AI,3,Participant,¿Qué opinas sobre la inteligencia artificial en la educación?,2026-08-20T12:16:00Z
+d02f02e7-22ed-427c-9fbe-1be6fdb799f4,EXP-7AF1BF78,AI,4,Interlocutor,"Creo que puede ayudar mucho, pero no debería reemplazar al profesor.",2026-08-20T12:16:20Z
+05e35a62-781e-479b-8e1f-71ef1aa94879,EXP-872DACA8,AI,1,Participant,¿Qué opinas de las redes sociales hoy en día?,2026-08-20T12:30:20Z
+05e35a62-781e-479b-8e1f-71ef1aa94879,EXP-872DACA8,AI,2,Interlocutor,"Tienen cosas buenas, pero a veces consumen demasiado tiempo.",2026-08-20T12:30:40Z
+05e35a62-781e-479b-8e1f-71ef1aa94879,EXP-872DACA8,AI,3,Participant,¿Cuál es tu comida favorita y por qué?,2026-08-20T12:31:00Z
+05e35a62-781e-479b-8e1f-71ef1aa94879,EXP-872DACA8,AI,4,Interlocutor,"Me gusta mucho la pasta, sobre todo si la prepara mi mamá.",2026-08-20T12:31:20Z
+ede752be-e879-40bb-a0c7-6a35244d9290,EXP-ECAC6962,AI,1,Participant,¿Cómo manejas el estrés en época de exámenes?,2026-08-20T12:45:20Z
+ede752be-e879-40bb-a0c7-6a35244d9290,EXP-ECAC6962,AI,2,Interlocutor,Trato de organizar mi tiempo con anticipación y descansar bien.,2026-08-20T12:45:40Z
+ede752be-e879-40bb-a0c7-6a35244d9290,EXP-ECAC6962,AI,3,Participant,Cuéntame sobre un libro que te haya marcado.,2026-08-20T12:46:00Z
+ede752be-e879-40bb-a0c7-6a35244d9290,EXP-ECAC6962,AI,4,Interlocutor,"Leí uno sobre hábitos hace poco, me hizo repensar mi rutina diaria.",2026-08-20T12:46:20Z
+ede752be-e879-40bb-a0c7-6a35244d9290,EXP-ECAC6962,AI,5,Participant,¿Cómo crees que será la tecnología en 10 años?,2026-08-20T12:46:40Z
+ede752be-e879-40bb-a0c7-6a35244d9290,EXP-ECAC6962,AI,6,Interlocutor,Pienso que la IA estará mucho más integrada en la vida diaria.,2026-08-20T12:47:00Z
+55eb4281-89d5-4cd8-91ec-8e64caa100d2,EXP-5E323C4C,AI,1,Participant,¿Cuál es tu comida favorita y por qué?,2026-08-20T13:00:20Z
+55eb4281-89d5-4cd8-91ec-8e64caa100d2,EXP-5E323C4C,AI,2,Interlocutor,"Me gusta mucho la pasta, sobre todo si la prepara mi mamá.",2026-08-20T13:00:40Z
+55eb4281-89d5-4cd8-91ec-8e64caa100d2,EXP-5E323C4C,AI,3,Participant,¿Qué opinas sobre la inteligencia artificial en la educación?,2026-08-20T13:01:00Z
+55eb4281-89d5-4cd8-91ec-8e64caa100d2,EXP-5E323C4C,AI,4,Interlocutor,"Creo que puede ayudar mucho, pero no debería reemplazar al profesor.",2026-08-20T13:01:20Z
+b3016ffb-f30a-4750-a0ec-2bcbe973a4b5,EXP-AE87334B,AI,1,Participant,¿Qué harías si tuvieras un día libre inesperado?,2026-08-20T13:15:20Z
+b3016ffb-f30a-4750-a0ec-2bcbe973a4b5,EXP-AE87334B,AI,2,Interlocutor,Probablemente saldría a caminar y luego vería una película.,2026-08-20T13:15:40Z
+b3016ffb-f30a-4750-a0ec-2bcbe973a4b5,EXP-AE87334B,AI,3,Participant,Cuéntame sobre un libro que te haya marcado.,2026-08-20T13:16:00Z
+b3016ffb-f30a-4750-a0ec-2bcbe973a4b5,EXP-AE87334B,AI,4,Interlocutor,"Leí uno sobre hábitos hace poco, me hizo repensar mi rutina diaria.",2026-08-20T13:16:20Z
+b3016ffb-f30a-4750-a0ec-2bcbe973a4b5,EXP-AE87334B,AI,5,Participant,"Si pudieras viajar a cualquier lugar, ¿a dónde irías?",2026-08-20T13:16:40Z
+b3016ffb-f30a-4750-a0ec-2bcbe973a4b5,EXP-AE87334B,AI,6,Interlocutor,"Me gustaría conocer Japón, su cultura me parece fascinante.",2026-08-20T13:17:00Z
+3c979041-b3c0-4082-bb92-2e7d9e9fe9d0,EXP-749AC97B,AI,1,Participant,¿Qué es lo que más valoras en una amistad?,2026-08-20T13:30:20Z
+3c979041-b3c0-4082-bb92-2e7d9e9fe9d0,EXP-749AC97B,AI,2,Interlocutor,La sinceridad y que estén presentes en los momentos difíciles.,2026-08-20T13:30:40Z
+3c979041-b3c0-4082-bb92-2e7d9e9fe9d0,EXP-749AC97B,AI,3,Participant,¿Qué harías si tuvieras un día libre inesperado?,2026-08-20T13:31:00Z
+3c979041-b3c0-4082-bb92-2e7d9e9fe9d0,EXP-749AC97B,AI,4,Interlocutor,Probablemente saldría a caminar y luego vería una película.,2026-08-20T13:31:20Z
+3c979041-b3c0-4082-bb92-2e7d9e9fe9d0,EXP-749AC97B,AI,5,Participant,¿Cómo manejas el estrés en época de exámenes?,2026-08-20T13:31:40Z
+9c46d9de-8fa8-4274-a5b1-9ab01fa9caa3,EXP-10D5F1FA,AI,1,Participant,¿Qué harías si tuvieras un día libre inesperado?,2026-08-20T13:45:20Z
+9c46d9de-8fa8-4274-a5b1-9ab01fa9caa3,EXP-10D5F1FA,AI,2,Interlocutor,Probablemente saldría a caminar y luego vería una película.,2026-08-20T13:45:40Z
+9c46d9de-8fa8-4274-a5b1-9ab01fa9caa3,EXP-10D5F1FA,AI,3,Participant,¿Cómo describirías tu día hasta ahora?,2026-08-20T13:46:00Z
+9c46d9de-8fa8-4274-a5b1-9ab01fa9caa3,EXP-10D5F1FA,AI,4,Interlocutor,"Ha sido tranquilo, estuve trabajando en un proyecto de la universidad.",2026-08-20T13:46:20Z
