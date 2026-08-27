@@ -27,7 +27,11 @@ public class ConversationTurnServiceTests
         _experimentSessionRepository.GetByIdAsync(session.Id, Arg.Any<CancellationToken>()).Returns(session);
         _conversationTurnRepository.ListBySessionAsync(session.Id, Arg.Any<CancellationToken>()).Returns([]);
         _textGenerationPort.GenerateInterlocutorReplyAsync(session, Arg.Any<IReadOnlyList<ConversationTurn>>(), Arg.Any<CancellationToken>())
-            .Returns("Respuesta generada por IA.");
+            .Returns(new TextGenerationResult(
+                Text: "Respuesta generada por IA.",
+                Provider: "mock",
+                LatencyMs: 5,
+                Degraded: false));
 
         // Act
         var result = await service.AddAsync(ownerUserId, session.Id, new AddConversationTurnRequest

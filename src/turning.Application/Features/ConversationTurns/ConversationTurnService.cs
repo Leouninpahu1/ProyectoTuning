@@ -67,10 +67,10 @@ public sealed class ConversationTurnService : IConversationTurnService
             try
             {
                 var history = existingTurns.Concat([turn]).ToArray();
-                var generatedReply = await _textGenerationPort.GenerateInterlocutorReplyAsync(session, history, cancellationToken);
-                if (!string.IsNullOrWhiteSpace(generatedReply))
+                var generationResult = await _textGenerationPort.GenerateInterlocutorReplyAsync(session, history, cancellationToken);
+                if (!string.IsNullOrWhiteSpace(generationResult.Text))
                 {
-                    var aiTurn = ConversationTurn.Create(session.Id, session.ConversationTurnCount + 1, ConversationActor.Interlocutor, generatedReply);
+                    var aiTurn = ConversationTurn.Create(session.Id, session.ConversationTurnCount + 1, ConversationActor.Interlocutor, generationResult.Text);
                     typeof(ConversationTurn).GetProperty("OriginatingTurnId")!.SetValue(aiTurn, turn.Id);
                     await _conversationTurnRepository.AddAsync(aiTurn, cancellationToken);
                     session.RegisterConversationTurn();
