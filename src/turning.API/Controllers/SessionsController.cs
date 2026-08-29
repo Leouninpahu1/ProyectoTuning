@@ -55,7 +55,10 @@ public sealed class SessionsController : ControllerBase
     [HttpGet("participant/{participantId:guid}")]
     public async Task<IActionResult> ListByParticipant(Guid participantId, [FromQuery] int page = 1, [FromQuery] int pageSize = 50, CancellationToken ct = default)
     {
-        try { var r = await _svc.ListByParticipantAsync(participantId, page, pageSize, ct); return Ok(new { participantId, sessions = r.Items, r.Total, r.Page, r.PageSize }); }
+        var uid = GetUserId();
+        var isPrivileged = User.IsInRole("Researcher") || User.IsInRole("Administrator");
+        try { var r = await _svc.ListByParticipantAsync(participantId, uid, isPrivileged, page, pageSize, ct); return Ok(new { participantId, sessions = r.Items, r.Total, r.Page, r.PageSize }); }
+        catch (AppEx ex) when (ex.Code == "SESSION_FORBIDDEN") { return Forbid(); }
         catch (AppEx ex) { return BadRequest(new { error = ex.Code }); }
     }
 

@@ -41,8 +41,9 @@ public sealed class ExperimentSessionService : IExperimentSessionService
         var s = await _repo.GetByIdAsync(id, ct) ?? throw new TurningApplicationException("Sesion no encontrada.", "SESSION_NOT_FOUND");
         return Map(s);
     }
-    public async Task<PagedSessionsResult> ListByParticipantAsync(Guid participantId, int page, int pageSize, CancellationToken ct = default)
+    public async Task<PagedSessionsResult> ListByParticipantAsync(Guid participantId, Guid requestingUserId, bool isPrivilegedRequester, int page, int pageSize, CancellationToken ct = default)
     {
+        if (requestingUserId != participantId && !isPrivilegedRequester) throw new TurningApplicationException("No autorizado para consultar sesiones de otro participante.", "SESSION_FORBIDDEN");
         if (page < 1 || pageSize < 1 || pageSize > 50) throw new TurningApplicationException("Paginacion invalida.", "SESSION_INVALID_PAGE");
         var items = await _repo.ListByOwnerAsync(participantId, page, pageSize, ct);
         var total = await _repo.CountByOwnerAsync(participantId, ct);

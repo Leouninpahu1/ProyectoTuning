@@ -107,6 +107,31 @@ public class InfrastructureIntegrationTests : IDisposable
         result[1].Sender.Should().Be(ConversationActor.Interlocutor);
     }
 
+    [Fact]
+    public async Task ExperimentSessionRepository_ShouldOnlyReturnSessionsOwnedByRequestedOwner()
+    {
+        // Arrange
+        var repository = new ExperimentSessionRepository(_dbContext);
+        var ownerA = UserAccount.Create("owner-a@example.com", "Owner A", "hash-value");
+        var ownerB = UserAccount.Create("owner-b@example.com", "Owner B", "hash-value");
+        _dbContext.UserAccounts.AddRange(ownerA, ownerB);
+        await _dbContext.SaveChangesAsync();
+
+        await repository.AddAsync(ExperimentSession.Create(ownerA.Id, ExperimentalCondition.Human));
+        await repository.AddAsync(ExperimentSession.Create(ownerA.Id, ExperimentalCondition.AI));
+        await repository.AddAsync(ExperimentSession.Create(ownerB.Id, ExperimentalCondition.AI));
+        await repository.SaveChangesAsync();
+
+        // Act
+        var ownerASessions = await repository.ListByOwnerAsync(ownerA.Id, page: 1, pageSize: 50);
+        var ownerACount = await repository.CountByOwnerAsync(ownerA.Id);
+
+        // Assert
+        ownerASessions.Should().HaveCount(2);
+        ownerASessions.Should().OnlyContain(s => s.OwnerUserId == ownerA.Id);
+        ownerACount.Should().Be(2);
+    }
+
     /// <inheritdoc />
     public void Dispose()
     {

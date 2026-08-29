@@ -12,7 +12,7 @@ public interface IExperimentSessionService
 
     Task<ExperimentSessionSnapshot?> GetLatestSessionAsync(Guid ownerUserId, CancellationToken cancellationToken = default);
     Task<ExperimentSessionSnapshot> GetByIdAsync(Guid id, CancellationToken ct = default);
-    Task<PagedSessionsResult> ListByParticipantAsync(Guid participantId, int page, int pageSize, CancellationToken ct = default);
+    Task<PagedSessionsResult> ListByParticipantAsync(Guid participantId, Guid requestingUserId, bool isPrivilegedRequester, int page, int pageSize, CancellationToken ct = default);
     Task<ExperimentSessionSnapshot> ActivateAsync(Guid id, CancellationToken ct = default);
     Task<ExperimentSessionSnapshot> CompleteAsync(Guid id, CancellationToken ct = default);
     Task<ExperimentSessionSnapshot> CancelAsync(Guid id, string reason, Guid actorId, CancellationToken ct = default);
