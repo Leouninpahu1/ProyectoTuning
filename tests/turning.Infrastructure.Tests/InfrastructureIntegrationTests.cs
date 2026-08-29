@@ -1,5 +1,4 @@
 using FluentAssertions;
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Turning.Domain.Entities;
 using Turning.Infrastructure.Persistence;
@@ -9,23 +8,25 @@ using Xunit;
 namespace Turning.Infrastructure.Tests;
 
 /// <summary>
-/// Pruebas de integración para la capa Infrastructure.
+/// Pruebas de integración para la capa Infrastructure, contra SQL Server LocalDB
+/// (único proveedor soportado por el proyecto desde 2026-08-29).
 /// </summary>
 public class InfrastructureIntegrationTests : IDisposable
 {
-    private readonly SqliteConnection _connection;
     private readonly TurningDbContext _dbContext;
 
     /// <summary>
-    /// Inicializa una base SQLite en memoria para la prueba.
+    /// Inicializa una base SQL Server LocalDB aislada (nombre único por instancia
+    /// de prueba) para evitar colisiones entre tests que corren en paralelo.
     /// </summary>
     public InfrastructureIntegrationTests()
     {
-        _connection = new SqliteConnection("Data Source=:memory:");
-        _connection.Open();
+        var databaseName = $"TurningTests_{Guid.NewGuid():N}";
+        var connectionString =
+            $"Server=(localdb)\\MSSQLLocalDB;Database={databaseName};Trusted_Connection=True;TrustServerCertificate=True";
 
         var options = new DbContextOptionsBuilder<TurningDbContext>()
-            .UseSqlite(_connection)
+            .UseSqlServer(connectionString)
             .Options;
 
         _dbContext = new TurningDbContext(options);
@@ -135,7 +136,7 @@ public class InfrastructureIntegrationTests : IDisposable
     /// <inheritdoc />
     public void Dispose()
     {
+        _dbContext.Database.EnsureDeleted();
         _dbContext.Dispose();
-        _connection.Dispose();
     }
 }

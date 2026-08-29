@@ -1,5 +1,4 @@
 using FluentAssertions;
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Turning.Domain.Entities;
 using Turning.Infrastructure.Persistence;
@@ -9,21 +8,22 @@ using Xunit;
 namespace Turning.Infrastructure.Tests;
 
 /// <summary>
-/// Pruebas de integración para la asignación balanceada de condición experimental.
+/// Pruebas de integración para la asignación balanceada de condición experimental,
+/// contra SQL Server LocalDB (único proveedor soportado desde 2026-08-29).
 /// </summary>
 public class BalancedAssignmentServiceTests : IDisposable
 {
-    private readonly SqliteConnection _connection;
     private readonly TurningDbContext _dbContext;
     private readonly Guid _ownerId;
 
     public BalancedAssignmentServiceTests()
     {
-        _connection = new SqliteConnection("Data Source=:memory:");
-        _connection.Open();
+        var databaseName = $"TurningTests_{Guid.NewGuid():N}";
+        var connectionString =
+            $"Server=(localdb)\\MSSQLLocalDB;Database={databaseName};Trusted_Connection=True;TrustServerCertificate=True";
 
         var options = new DbContextOptionsBuilder<TurningDbContext>()
-            .UseSqlite(_connection)
+            .UseSqlServer(connectionString)
             .Options;
 
         _dbContext = new TurningDbContext(options);
@@ -103,7 +103,7 @@ public class BalancedAssignmentServiceTests : IDisposable
     /// <inheritdoc />
     public void Dispose()
     {
+        _dbContext.Database.EnsureDeleted();
         _dbContext.Dispose();
-        _connection.Dispose();
     }
 }
