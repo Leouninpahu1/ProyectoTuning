@@ -37,3 +37,5 @@ packages/
 *.cache
 Thumbs.db
 Desktop.ini
+# Local project memory (not for GitHub)
+CLAUDE.md
