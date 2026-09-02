@@ -36,4 +36,8 @@ packages/
 *.temp
 *.cache
 Thumbs.db
-Desktop.ini
+Desktop.ini-e 
+# Bases de datos locales (SQLite, ya no se usan; el proyecto trabaja con SQL Server)
+*.db
+*.db-shm
+*.db-wal
