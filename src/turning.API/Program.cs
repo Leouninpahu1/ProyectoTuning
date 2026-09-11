@@ -37,7 +37,44 @@ builder.Services.AddControllers(options =>
     options.Filters.Add<Turning.API.Filters.SessionOwnershipFilter>();
 });
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new Microsoft.OpenApi.OpenApiInfo
+    {
+        Title = "Turning API",
+        Version = "v1",
+        Description = "API del experimento de interacciones empaticas humano-IA. "
+            + "Las rutas de sesion aplican aislamiento por propietario: una sesion ajena "
+            + "responde 404, igual que una inexistente, para no revelar por enumeracion "
+            + "que el identificador existe."
+    });
+
+    // Los <summary> de controllers y DTOs se muestran en Swagger UI.
+    var xmlApi = Path.Combine(AppContext.BaseDirectory, "turning.API.xml");
+    if (File.Exists(xmlApi)) options.IncludeXmlComments(xmlApi, includeControllerXmlComments: true);
+
+    var xmlApplication = Path.Combine(AppContext.BaseDirectory, "turning.Application.xml");
+    if (File.Exists(xmlApplication)) options.IncludeXmlComments(xmlApplication);
+
+    // Sin esto no se puede probar un endpoint autenticado desde Swagger UI.
+    options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = Microsoft.OpenApi.SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = Microsoft.OpenApi.ParameterLocation.Header,
+        Description = "Token JWT obtenido de POST /api/auth/login. Se envia como: Bearer {token}"
+    });
+
+    options.AddSecurityRequirement(document => new Microsoft.OpenApi.OpenApiSecurityRequirement
+    {
+        {
+            new Microsoft.OpenApi.OpenApiSecuritySchemeReference("Bearer", document),
+            new List<string>()
+        }
+    });
+});
 
 var app = builder.Build();
 
