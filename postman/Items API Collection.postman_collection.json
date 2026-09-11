@@ -1,0 +1,134 @@
+{
+  "info": {
+    "name": "Items API Collection",
+    "description": "Colección para probar endpoints CRUD de /items",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "https://localhost:64396/api" },
+    { "key": "bearerToken", "value": "" },
+    { "key": "createdItemId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "GET /items",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{bearerToken}}" },
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/items"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('Body is JSON array', function () { var json = pm.response.json(); pm.expect(json).to.be.an('array'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "POST /items",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{bearerToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Ejemplo item\",\n  \"description\": \"Descripción de ejemplo\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/items" }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 201 or 200', function () { pm.expect([200,201]).to.include(pm.response.code); });",
+              "pm.test('Response is an object with id', function () { var json = pm.response.json(); pm.expect(json).to.be.an('object'); pm.expect(json).to.have.property('id'); });",
+              "// Guardar id creado en la variable de entorno 'createdItemId' para pruebas posteriores",
+              "if (pm.response.json() && pm.response.json().id) { pm.environment.set('createdItemId', pm.response.json().id); }"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "GET /items/:id",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{bearerToken}}" },
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "url": { "raw": "{{baseUrl}}/items/{{createdItemId}}" }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('Response is an object with id equal to requested id', function () { var json = pm.response.json(); pm.expect(json).to.be.an('object'); pm.expect(json.id || json.Id || json.ID).to.exist; });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "PUT /items/:id",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{bearerToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Item actualizado\",\n  \"description\": \"Descripción actualizada\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/items/{{createdItemId}}" }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('Response contains id', function () { var json = pm.response.json(); pm.expect(json).to.be.an('object'); pm.expect(json).to.have.property('id'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "DELETE /items/:id",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{bearerToken}}" }
+        ],
+        "url": { "raw": "{{baseUrl}}/items/{{createdItemId}}" }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 200 or 204', function () { pm.expect([200,204]).to.include(pm.response.code); });"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -9,6 +9,7 @@
 @code {
     protected override void OnAfterRender(bool firstRender)
     {
+        Console.WriteLine($"[SUE-AUTH] RedirectToLogin renderizado. firstRender={firstRender}");
         if (!firstRender)
         {
             return;

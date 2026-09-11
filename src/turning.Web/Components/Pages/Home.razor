@@ -1,55 +1,191 @@
 ﻿@page "/"
+@layout EmptyLayout
 
-<PageTitle>Turning Web</PageTitle>
+@inject NavigationManager NavigationManager
+@inject TokenAuthenticationStateProvider AuthStateProvider
 
-<section class="hero-panel">
-	<p class="eyebrow">Turning Tuning</p>
-	<h1>Autenticacion UX en Blazor lista para consumir la API y abrir zonas protegidas.</h1>
-	<p class="hero-copy">
-		El frontend ya separa login, registro, persistencia del JWT y navegacion protegida sin romper la
-		frontera con la API. Desde aqui puedes entrar al panel autenticado o seguir ampliando la experiencia
-		visual que vendra desde Unity.
-	</p>
+<PageTitle>SUE — Sistema de Usuario con Empatía</PageTitle>
 
-	<div class="hero-actions">
-		<AuthorizeView>
-			<Authorized>
-				<a class="hero-button hero-button-primary" href="workspace">Abrir panel protegido</a>
-				<a class="hero-button hero-button-secondary" href="unity">Entrar a Unity</a>
-			</Authorized>
-			<NotAuthorized>
-				<a class="hero-button hero-button-primary" href="login">Iniciar sesion</a>
-				<a class="hero-button hero-button-secondary" href="register">Crear cuenta</a>
-			</NotAuthorized>
-		</AuthorizeView>
-	</div>
-</section>
+<div class="sue-landing paper">
+    <!-- Barra superior -->
+    <header class="sue-landing-nav">
+        <div class="sue-landing-brand">
+            <div class="sue-landing-brand-icon">◦</div>
+            <div>
+                <p class="sue-landing-brand-text">SUE</p>
+                <p class="sue-landing-brand-sub">Espacio de empatía</p>
+            </div>
+        </div>
+        <nav class="sue-landing-links">
+            <a href="#about">Acerca</a>
+            <a href="#features">Módulos</a>
+            <a href="#how">Cómo funciona</a>
+        </nav>
+        <div class="sue-landing-actions">
+            <a href="/login" class="btn-ghost sue-landing-btn">Iniciar sesión</a>
+            <a href="/register" class="btn-tierra sue-landing-btn-primary">Comenzar</a>
+        </div>
+    </header>
 
-<section class="feature-grid">
-	<article class="info-card">
-		<span class="card-tag">Acceso</span>
-		<h2>Login y registro conectados</h2>
-		<p>
-			Las pantallas publicas ya envian credenciales a la API, muestran errores de negocio y reconstruyen
-			la sesion desde el token persistido en el navegador.
-		</p>
-	</article>
+    <!-- Hero -->
+    <section class="sue-landing-hero">
+        <div class="sue-landing-hero-text">
+            <p class="sue-eyebrow">◦ Bienvenido a SUE</p>
+            <h1 class="sue-landing-title">
+                Conecta con tus emociones en un espacio cálido.
+            </h1>
+            <p class="sue-landing-subtitle">
+                SUE es un sistema empático que combina conversaciones, lectura emocional, encuestas y un avatar
+                para acompañarte en tu viaje personal. Sin juicios, sin prisas — solo un espacio seguro.
+            </p>
+            <div class="sue-landing-cta">
+                <button class="btn-tierra sue-landing-cta-btn" @onclick="GoToLoginOrWorkspace">
+                    ◦ Iniciar mi viaje
+                </button>
+                <button class="btn-ghost sue-landing-cta-ghost" @onclick="GoToRegister">
+                    Crear cuenta
+                </button>
+            </div>
 
-	<article class="info-card">
-		<span class="card-tag">Proteccion</span>
-		<h2>Navegacion guiada por auth</h2>
-		<p>
-			El router ya detecta rutas con autorizacion, redirige a login y libera el panel o la zona Unity solo
-			cuando la sesion ya esta activa.
-		</p>
-	</article>
+            <div class="sue-landing-trust">
+                <div class="sue-landing-trust-item">
+                    <span class="pulse-dot" style="width: 10px; height: 10px; border-radius: 50%; background: var(--salvia-oscura); display: inline-block;"></span>
+                    Privado y seguro
+                </div>
+                <div class="sue-landing-trust-item">◇ Diseño empático</div>
+                <div class="sue-landing-trust-item">⌁ Avatar personal</div>
+            </div>
+        </div>
 
-	<article class="info-card">
-		<span class="card-tag">Assets</span>
-		<h2>Unity sigue aislado</h2>
-		<p>
-			La parte visual sigue preparada para recibir recursos desde <strong>wwwroot/unity</strong> sin mezclar la
-			presentacion con el backend ni con la autenticacion.
-		</p>
-	</article>
-</section>
+        <div class="sue-landing-hero-visual">
+            <div class="sue-landing-avatar-frame breathe">
+                <span class="sue-landing-avatar-letter">S</span>
+            </div>
+            <p class="sue-landing-avatar-caption">Tu compañero emocional te espera</p>
+        </div>
+    </section>
+
+    <!-- About -->
+    <section id="about" class="sue-landing-section">
+        <p class="sue-eyebrow" style="text-align: center;">◇ Acerca de SUE</p>
+        <h2 class="sue-landing-section-title">Un espacio diseñado para escucharte.</h2>
+        <p class="sue-landing-section-subtitle">
+            SUE nace de la necesidad de crear un lugar digital donde las emociones tengan un lugar propio.
+            No es solo una app — es una compañía silenciosa para explorar lo que sientes.
+        </p>
+
+        <div class="sue-landing-about-grid">
+            <div class="sue-landing-about-card">
+                <div class="sue-landing-about-icon">◦</div>
+                <h3>Cálido por diseño</h3>
+                <p>Cada color, textura y animación fue pensada para transmitir calma y cercanía.</p>
+            </div>
+            <div class="sue-landing-about-card">
+                <div class="sue-landing-about-icon">◌</div>
+                <h3>Sin juicios</h3>
+                <p>SUE te escucha sin evaluar. Todas las emociones son bienvenidas aquí.</p>
+            </div>
+            <div class="sue-landing-about-card">
+                <div class="sue-landing-about-icon">◈</div>
+                <h3>Tu ritmo</h3>
+                <p>No hay prisa. Explora a tu manera, cuando quieras, como quieras.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features -->
+    <section id="features" class="sue-landing-section sue-landing-section-alt">
+        <p class="sue-eyebrow" style="text-align: center;">— Módulos</p>
+        <h2 class="sue-landing-section-title">Todo lo que SUE puede hacer por ti.</h2>
+        <p class="sue-landing-section-subtitle">
+            Una suite completa de herramientas emocionales, integradas en una experiencia coherente.
+        </p>
+
+        <div class="sue-landing-features-grid">
+            <div class="sue-landing-feature">
+                <div class="sue-landing-feature-icon">—</div>
+                <h3>Sesiones de Experiencia</h3>
+                <p>Crea y gestiona sesiones emocionales con contexto persistente.</p>
+            </div>
+            <div class="sue-landing-feature">
+                <div class="sue-landing-feature-icon">·</div>
+                <h3>Conversaciones Emocionales</h3>
+                <p>Habla con SUE y explora lo que sientes a través del diálogo.</p>
+            </div>
+            <div class="sue-landing-feature">
+                <div class="sue-landing-feature-icon">◇</div>
+                <h3>Lectura de Emociones</h3>
+                <p>Visualiza tu paisaje emocional con gráficos y registros.</p>
+            </div>
+            <div class="sue-landing-feature">
+                <div class="sue-landing-feature-icon">○</div>
+                <h3>Encuestas de Bienestar</h3>
+                <p>Reflexiona con preguntas guiadas y observa tus resultados.</p>
+            </div>
+            <div class="sue-landing-feature">
+                <div class="sue-landing-feature-icon">⌁</div>
+                <h3>Avatar SUE</h3>
+                <p>Un compañero visual que refleja tu estado emocional.</p>
+            </div>
+            <div class="sue-landing-feature">
+                <div class="sue-landing-feature-icon">▤</div>
+                <h3>Resultados y Análisis</h3>
+                <p>Comprende tu evolución emocional con insights claros.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- How -->
+    <section id="how" class="sue-landing-section">
+        <p class="sue-eyebrow" style="text-align: center;">◦ Cómo funciona</p>
+        <h2 class="sue-landing-section-title">Tres pasos simples.</h2>
+
+        <div class="sue-landing-steps">
+            <div class="sue-landing-step">
+                <div class="sue-landing-step-num">1</div>
+                <h3>Crea tu cuenta</h3>
+                <p>Regístrate en segundos. Solo necesitas un correo y una contraseña.</p>
+            </div>
+            <div class="sue-landing-step">
+                <div class="sue-landing-step-num">2</div>
+                <h3>Inicia una sesión</h3>
+                <p>Comienza una experiencia emocional y deja que SUE te acompañe.</p>
+            </div>
+            <div class="sue-landing-step">
+                <div class="sue-landing-step-num">3</div>
+                <h3>Explora y reflexiona</h3>
+                <p>Conversa, registra emociones y observa tu evolución con el tiempo.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA final -->
+    <section class="sue-landing-cta-final">
+        <h2 class="sue-landing-cta-title">Tu viaje emocional comienza hoy.</h2>
+        <p class="sue-landing-cta-subtitle">
+            Únete a SUE y descubre una manera más cálida de conectar contigo mismo.
+        </p>
+        <button class="btn-tierra sue-landing-cta-btn" @onclick="GoToLoginOrWorkspace">
+            ◦ Iniciar mi viaje
+        </button>
+    </section>
+
+    <!-- Footer -->
+    <footer class="sue-landing-footer">
+        <p>© 2026 SUE · Sistema de Usuario con Empatía</p>
+        <p style="opacity: 0.7;">Conecta con tus emociones en un espacio cálido.</p>
+    </footer>
+</div>
+
+@code {
+
+    private void GoToLoginOrWorkspace()
+    {
+        NavigationManager.NavigateTo("/login");
+    }
+
+    private void GoToRegister()
+    {
+        NavigationManager.NavigateTo("/register");
+    }
+}

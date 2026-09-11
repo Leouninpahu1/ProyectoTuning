@@ -1,8 +1,8 @@
 ﻿@rendermode @(new InteractiveServerRenderMode(prerender: false))
 
-<CascadingAuthenticationState>
-    <AuthStateBootstrapper />
+@inject TokenAuthenticationStateProvider AuthStateProvider
 
+<CascadingAuthenticationState>
     <Router AppAssembly="typeof(Program).Assembly" NotFoundPage="typeof(Pages.NotFound)">
         <Found Context="routeData">
             <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
@@ -11,9 +11,9 @@
                 </NotAuthorized>
                 <Authorizing>
                     <section class="route-guard">
-                        <p class="eyebrow">Sesion</p>
+                        <p class="eyebrow">Sesión</p>
                         <h1>Validando acceso protegido.</h1>
-                        <p class="hero-copy">Esperando el token persistido en el navegador para reconstruir la sesion.</p>
+                        <p class="hero-copy">Esperando el token persistido en el navegador para reconstruir la sesión.</p>
                     </section>
                 </Authorizing>
             </AuthorizeRouteView>
@@ -21,3 +21,10 @@
         </Found>
     </Router>
 </CascadingAuthenticationState>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthStateProvider.InitializeAsync();
+    }
+}

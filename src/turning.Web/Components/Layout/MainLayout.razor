@@ -1,31 +1,34 @@
-﻿@inject NavigationManager NavigationManager
+﻿@inherits LayoutComponentBase
+@inject NavigationManager NavigationManager
 @inject TokenAuthenticationStateProvider AuthStateProvider
 
-@inherits LayoutComponentBase
-
-<div class="page">
-    <div class="sidebar">
+<div class="sue-layout">
+    <!-- Sidebar Desktop -->
+    <aside class="sue-sidebar-wrapper">
         <NavMenu />
-    </div>
+    </aside>
 
-    <main>
-        <div class="top-row px-4">
-            <span class="top-row-label">Turning Web</span>
-            <AuthorizeView Context="authState">
-                <Authorized>
-                    <span class="session-chip">@authState.User.Identity?.Name</span>
-                    <a href="workspace">Panel</a>
-                    <a href="unity">Unity Assets</a>
-                    <button class="top-row-button" @onclick="HandleLogoutAsync">Cerrar sesion</button>
-                </Authorized>
-                <NotAuthorized>
-                    <a href="login">Login</a>
-                    <a href="register">Registro</a>
-                </NotAuthorized>
-            </AuthorizeView>
-        </div>
+    <!-- Main -->
+    <main class="sue-main">
+        <!-- Header Mobile -->
+        <header class="sue-mobile-header">
+            <div class="sue-mobile-brand">
+                <span class="sue-mobile-icon">◦</span>
+                <span class="sue-mobile-text">SUE</span>
+            </div>
+            <button class="sue-mobile-menu-btn" @onclick="ToggleMobileMenu">☰</button>
+        </header>
 
-        <article class="content px-4">
+        <!-- Menú móvil desplegable -->
+        @if (_mobileMenuOpen)
+        {
+            <div class="sue-mobile-menu">
+                <NavMenu />
+            </div>
+        }
+
+        <!-- Contenido -->
+        <article class="sue-content">
             @Body
         </article>
     </main>
@@ -38,9 +41,10 @@
 </div>
 
 @code {
-    private async Task HandleLogoutAsync()
+    private bool _mobileMenuOpen;
+
+    private void ToggleMobileMenu()
     {
-        await AuthStateProvider.SignOutAsync();
-        NavigationManager.NavigateTo("/login", replace: true);
+        _mobileMenuOpen = !_mobileMenuOpen;
     }
 }

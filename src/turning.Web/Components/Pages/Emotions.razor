@@ -1,0 +1,162 @@
+@page "/emotions"
+@attribute [Authorize]
+
+@using turning.Web.ExperimentSessions
+
+@inject ExperimentSessionApiClient ExperimentSessionApiClient
+@inject IJSRuntime JS
+
+<PageTitle>SUE — Lectura de Emociones</PageTitle>
+
+<div class="sue-page">
+    <header class="sue-header">
+        <p class="sue-eyebrow">◇ Conciencia</p>
+        <h1 class="sue-title">Lectura de Emociones</h1>
+        <p class="sue-subtitle">Explora tu paisaje emocional reciente.</p>
+    </header>
+
+    <!-- Grid de emociones -->
+    <div class="sue-emotions-grid">
+        @foreach (var emotion in _emotions)
+        {
+            <div class="sue-emotion-card @(emotion.Selected ? "selected" : "")" @onclick="() => SelectEmotion(emotion)">
+                <div class="sue-emotion-icon">@emotion.Icon</div>
+                <h3 class="sue-emotion-title">@emotion.Name</h3>
+                <p class="sue-emotion-desc">@emotion.Description</p>
+                <div class="sue-emotion-bar">
+                    <div class="sue-emotion-fill" style="width: @(emotion.Level)% ; background: @emotion.Color;"></div>
+                </div>
+                <p class="sue-emotion-intensity">@emotion.Level% intensidad</p>
+            </div>
+        }
+    </div>
+
+    <!-- Radar + Formulario -->
+    <div class="sue-two-cols">
+        <!-- Radar -->
+        <div class="sue-card">
+            <h2 class="sue-card-title">Balance emocional</h2>
+            <div style="margin-top: 20px; height: 320px;">
+                <canvas id="emotionRadar"></canvas>
+            </div>
+        </div>
+
+        <!-- Registrar emoción -->
+        <div class="sue-card">
+            <h2 class="sue-card-title">Registrar un sentimiento</h2>
+            <p class="sue-subtitle" style="margin-bottom: 20px;">
+                Añade una entrada emocional a tu viaje.
+            </p>
+
+            <div class="sue-form-field">
+                <label class="sue-form-label">Emoción</label>
+                <select class="input-tierra" @bind="_selectedEmotionName">
+                    @foreach (var emotion in _emotions)
+                    {
+                        <option value="@emotion.Name">@emotion.Name</option>
+                    }
+                </select>
+            </div>
+
+            <div class="sue-form-field">
+                <label class="sue-form-label">
+                    Intensidad: <span style="color: var(--terracota-oscura);">@_selectedIntensity</span>/10
+                </label>
+                <input type="range" min="1" max="10" value="@_selectedIntensity"
+                       class="sue-slider"
+                       @oninput="OnIntensityChanged" />
+            </div>
+
+            <div class="sue-form-field">
+                <label class="sue-form-label">Nota (opcional)</label>
+                <textarea class="input-tierra" rows="3" placeholder="¿Qué está pasando?"
+                          @bind="_emotionNote"></textarea>
+            </div>
+
+            <button class="btn-tierra" style="margin-top: 12px;" @onclick="SaveEmotion">
+                ◇ Guardar sentimiento
+            </button>
+
+            @if (!string.IsNullOrWhiteSpace(_confirmationMessage))
+            {
+                <p style="margin-top: 16px; padding: 12px; border-radius: 12px; background: rgba(181,196,177,0.35); color: var(--salvia-oscura); font-size: 14px; font-weight: 700;">
+                    @_confirmationMessage
+                </p>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private class EmotionItem
+    {
+        public string Name { get; set; } = "";
+        public string Icon { get; set; } = "";
+        public string Description { get; set; } = "";
+        public int Level { get; set; }
+        public string Color { get; set; } = "";
+        public bool Selected { get; set; }
+    }
+
+    private List<EmotionItem> _emotions = new()
+    {
+        new() { Name = "Alegría", Icon = "○", Description = "Energía positiva y conexión.", Level = 82, Color = "#E8C9A0" },
+        new() { Name = "Calma", Icon = "◌", Description = "Equilibrio, descanso y presencia.", Level = 74, Color = "#B5C4B1" },
+        new() { Name = "Tristeza", Icon = "△", Description = "Una señal para reflexionar y cuidarte.", Level = 39, Color = "#D4B8A7" },
+        new() { Name = "Ansiedad", Icon = "≈", Description = "Un recordatorio para respirar.", Level = 28, Color = "#D5C4D4" }
+    };
+
+    private string _selectedEmotionName = "Alegría";
+    private int _selectedIntensity = 7;
+    private string _emotionNote = string.Empty;
+    private string? _confirmationMessage;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await DrawRadarAsync();
+        }
+    }
+
+    private void SelectEmotion(EmotionItem emotion)
+    {
+        foreach (var e in _emotions) e.Selected = false;
+        emotion.Selected = true;
+        _selectedEmotionName = emotion.Name;
+        _confirmationMessage = null;
+    }
+
+    private void OnIntensityChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var value))
+        {
+            _selectedIntensity = value;
+        }
+    }
+
+    private void SaveEmotion()
+    {
+        _confirmationMessage = $"Registrado: {_selectedEmotionName} con intensidad {_selectedIntensity}/10.";
+        _emotionNote = string.Empty;
+
+        // Actualiza el nivel de la emoción seleccionada en el grid (visual)
+        var emotion = _emotions.FirstOrDefault(x => x.Name == _selectedEmotionName);
+        if (emotion is not null)
+        {
+            emotion.Level = _selectedIntensity * 10;
+        }
+    }
+
+    private async Task DrawRadarAsync()
+    {
+        var data = new
+        {
+            labels = _emotions.Select(x => x.Name).ToArray(),
+            values = _emotions.Select(x => x.Level / 100.0).ToArray(),
+            colors = _emotions.Select(x => x.Color).ToArray()
+        };
+
+        await JS.InvokeVoidAsync("sueDrawRadar", "emotionRadar", data);
+    }
+}

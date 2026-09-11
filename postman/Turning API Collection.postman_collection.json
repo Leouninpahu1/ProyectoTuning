@@ -1,0 +1,256 @@
+{
+  "info": {
+    "name": "Turning API",
+    "description": "Coleccion Postman para probar los endpoints REST de Turning API.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{bearerToken}}", "type": "string" }]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "https://localhost:64396/api" },
+    { "key": "bearerToken", "value": "" },
+    { "key": "userId", "value": "" },
+    { "key": "sessionId", "value": "" },
+    { "key": "participantId", "value": "00000000-0000-0000-0000-000000000001" },
+    { "key": "surveyDefinitionId", "value": "" },
+    { "key": "eventId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": { "method": "GET", "auth": { "type": "noauth" }, "url": { "raw": "{{baseUrl}}/health" } },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+            "pm.test('Healthy response', function () { pm.expect(pm.response.json().isHealthy).to.eql(true); });"
+          ] } }]
+        },
+        {
+          "name": "GET /health/status",
+          "request": { "method": "GET", "auth": { "type": "noauth" }, "url": { "raw": "{{baseUrl}}/health/status?message=Postman%20check" } },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200', function () { pm.response.to.have.status(200); });"
+          ] } }]
+        }
+      ]
+    },
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "POST /auth/register",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"fullName\": \"Postman Researcher\",\n  \"email\": \"{{registerEmail}}\",\n  \"password\": \"P@ssw0rd123!\",\n  \"role\": \"Researcher\"\n}" },
+            "url": { "raw": "{{baseUrl}}/auth/register" }
+          },
+          "event": [
+            { "listen": "prerequest", "script": { "exec": ["pm.environment.set('registerEmail', 'postman.' + Date.now() + '@example.com');"] } },
+            { "listen": "test", "script": { "exec": [
+              "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+              "var json = pm.response.json();",
+              "pm.expect(json.accessToken).to.exist;",
+              "pm.environment.set('bearerToken', json.accessToken);",
+              "if (json.user && json.user.id) pm.environment.set('userId', json.user.id);",
+              "pm.environment.set('loginEmail', pm.environment.get('registerEmail'));",
+              "pm.environment.set('loginPassword', 'P@ssw0rd123!');"
+            ] } }
+          ]
+        },
+        {
+          "name": "POST /auth/login",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{loginEmail}}\",\n  \"password\": \"{{loginPassword}}\"\n}" },
+            "url": { "raw": "{{baseUrl}}/auth/login" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+            "var json = pm.response.json(); pm.expect(json.accessToken).to.exist; pm.environment.set('bearerToken', json.accessToken);",
+            "if (json.user && json.user.id) pm.environment.set('userId', json.user.id);"
+          ] } }]
+        },
+        {
+          "name": "GET /auth/me",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/auth/me" } },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200', function () { pm.response.to.have.status(200); });"
+          ] } }]
+        }
+      ]
+    },
+    {
+      "name": "Sessions",
+      "item": [
+        {
+          "name": "POST /sessions",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"preferredCondition\": \"AI\"\n}" },
+            "url": { "raw": "{{baseUrl}}/sessions" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 201', function () { pm.response.to.have.status(201); });",
+            "var json = pm.response.json(); pm.expect(json.id).to.exist; pm.environment.set('sessionId', json.id);"
+          ] } }]
+        },
+        {
+          "name": "POST /experiment-sessions/bootstrap",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"preferredCondition\": \"AI\"\n}" },
+            "url": { "raw": "{{baseUrl}}/experiment-sessions/bootstrap" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+            "var json = pm.response.json(); pm.expect(json.id).to.exist; pm.environment.set('sessionId', json.id);"
+          ] } }]
+        },
+        {
+          "name": "GET /experiment-sessions/latest",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/experiment-sessions/latest" } },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200 or 404', function () { pm.expect([200,404]).to.include(pm.response.code); });",
+            "if (pm.response.code === 200) pm.environment.set('sessionId', pm.response.json().id);"
+          ] } }]
+        },
+        {
+          "name": "GET /sessions/:id",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/sessions/{{sessionId}}" } },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 200', function () { pm.response.to.have.status(200); });"] } }]
+        },
+        {
+          "name": "GET /sessions/participant/:participantId",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/sessions/participant/{{participantId}}?page=1&pageSize=50" } },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Expected response', function () { pm.expect([200,400]).to.include(pm.response.code); });"] } }]
+        },
+        {
+          "name": "POST /sessions/:id/activate",
+          "request": { "method": "POST", "url": { "raw": "{{baseUrl}}/sessions/{{sessionId}}/activate" } },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Expected response', function () { pm.expect([200,400,404,409]).to.include(pm.response.code); });"] } }]
+        },
+        {
+          "name": "POST /sessions/:id/complete",
+          "request": { "method": "POST", "url": { "raw": "{{baseUrl}}/sessions/{{sessionId}}/complete" } },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Expected response', function () { pm.expect([200,400,404,409]).to.include(pm.response.code); });"] } }]
+        },
+        {
+          "name": "POST /sessions/:id/cancel",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Prueba cancelada desde Postman\"\n}" },
+            "url": { "raw": "{{baseUrl}}/sessions/{{sessionId}}/cancel" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Expected response', function () { pm.expect([200,400,401,403,404,409]).to.include(pm.response.code); });"] } }]
+        }
+      ]
+    },
+    {
+      "name": "Conversation turns",
+      "item": [
+        {
+          "name": "GET /experiment-sessions/:id/conversation-turns",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/experiment-sessions/{{sessionId}}/conversation-turns" } },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Expected response', function () { pm.expect([200,400,404]).to.include(pm.response.code); });"] } }]
+        },
+        {
+          "name": "POST /experiment-sessions/:id/conversation-turns",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"sender\": \"Participant\",\n  \"message\": \"Mensaje de prueba desde Postman\"\n}" },
+            "url": { "raw": "{{baseUrl}}/experiment-sessions/{{sessionId}}/conversation-turns" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Expected response', function () { pm.expect([200,400,404]).to.include(pm.response.code); });"] } }]
+        }
+      ]
+    },
+    {
+      "name": "Emotions and avatar",
+      "item": [
+        {
+          "name": "POST /sessions/:id/emotions",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"emotion\": \"joy\",\n  \"score\": 0.85,\n  \"source\": \"postman\"\n}" },
+            "url": { "raw": "{{baseUrl}}/sessions/{{sessionId}}/emotions" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Expected response', function () { pm.expect([201,400,404]).to.include(pm.response.code); });"] } }]
+        },
+        {
+          "name": "GET /sessions/:id/emotions",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/sessions/{{sessionId}}/emotions" } },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Expected response', function () { pm.expect([200,404]).to.include(pm.response.code); });"] } }]
+        },
+        {
+          "name": "GET /sessions/:id/avatar/current",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/sessions/{{sessionId}}/avatar/current" } },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Expected response', function () { pm.expect([200,404]).to.include(pm.response.code); });"] } }]
+        }
+      ]
+    },
+    {
+      "name": "Survey",
+      "item": [
+        {
+          "name": "GET /sessions/:id/survey",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/sessions/{{sessionId}}/survey" } },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Expected response', function () { pm.expect([200,400,404]).to.include(pm.response.code); });",
+            "if (pm.response.code === 200) pm.environment.set('surveyDefinitionId', pm.response.json().id);"
+          ] } }]
+        },
+        {
+          "name": "POST /sessions/:id/survey/responses",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"surveyDefinitionId\": \"{{surveyDefinitionId}}\",\n  \"answers\": {\n    \"satisfaction\": \"5\",\n    \"comments\": \"Respuesta de prueba\"\n  }\n}" },
+            "url": { "raw": "{{baseUrl}}/sessions/{{sessionId}}/survey/responses" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Expected response', function () { pm.expect([201,400,404,409]).to.include(pm.response.code); });"] } }]
+        }
+      ]
+    },
+    {
+      "name": "Events and results",
+      "item": [
+        {
+          "name": "GET /sessions/:id/events",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/sessions/{{sessionId}}/events" } },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Expected response', function () { pm.expect([200,404,410]).to.include(pm.response.code); });",
+            "if (pm.response.code === 200) { var events = pm.response.json(); if (events.length) pm.environment.set('eventId', events[events.length - 1].id); }"
+          ] } }]
+        },
+        {
+          "name": "GET /sessions/:id/events?after=",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/sessions/{{sessionId}}/events?after={{eventId}}" } },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Expected response', function () { pm.expect([200,404,410]).to.include(pm.response.code); });"] } }]
+        },
+        {
+          "name": "GET /sessions/:id/results",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/sessions/{{sessionId}}/results" } },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Expected response', function () { pm.expect([200,404]).to.include(pm.response.code); });"] } }]
+        },
+        {
+          "name": "GET /results",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/results?from=2026-01-01T00:00:00Z&to=2026-12-31T23:59:59Z&condition=AI&page=1&pageSize=50" } },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Expected response', function () { pm.expect([200,401,403]).to.include(pm.response.code); });"] } }]
+        }
+      ]
+    }
+  ]
+}

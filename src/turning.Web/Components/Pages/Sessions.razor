@@ -1,0 +1,146 @@
+@page "/sessions"
+@attribute [Authorize]
+
+@using System.Net
+@using turning.Web.ExperimentSessions
+
+@inject ExperimentSessionApiClient ExperimentSessionApiClient
+@inject NavigationManager NavigationManager
+@inject TokenAuthenticationStateProvider AuthStateProvider
+
+<PageTitle>SUE — Sesiones de Experiencia</PageTitle>
+
+<div class="sue-page">
+    <header class="sue-header" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px;">
+        <div>
+            <p class="sue-eyebrow">— Experiencias</p>
+            <h1 class="sue-title">Sesiones de Experiencia</h1>
+            <p class="sue-subtitle">Crea, explora y reflexiona sobre tus sesiones emocionales.</p>
+        </div>
+        <button class="btn-tierra" style="width: auto; padding: 12px 24px;" @onclick="GoToWorkspace">
+            ◦ Nueva Sesión
+        </button>
+    </header>
+
+    @if (_isLoading)
+    {
+        <div class="sue-card">
+            <p class="sue-info-value">Cargando sesiones...</p>
+        </div>
+    }
+    else if (!string.IsNullOrWhiteSpace(_errorMessage))
+    {
+        <div class="sue-card">
+            <p class="sue-info-value" style="color: #A87B64;">@_errorMessage</p>
+        </div>
+    }
+    else if (_session is null)
+    {
+        <div class="sue-card" style="text-align: center; padding: 60px 20px;">
+            <div style="font-size: 48px; margin-bottom: 16px;">◦</div>
+            <h2 class="sue-card-title">Aún no tienes sesiones</h2>
+            <p class="sue-subtitle" style="margin-bottom: 24px;">
+                Comienza tu primera experiencia emocional en el panel principal.
+            </p>
+            <button class="btn-tierra" style="max-width: 280px; margin: 0 auto;" @onclick="GoToWorkspace">
+                ◦ Crear mi primera sesión
+            </button>
+        </div>
+    }
+    else
+    {
+        <div class="sue-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 20px;">
+                <div>
+                    <p class="sue-info-label">Código de sesión</p>
+                    <h2 class="sue-card-title" style="margin: 4px 0 0;">@_session.SessionCode</h2>
+                </div>
+                <span style="padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: 800; 
+                             background: @(_session.Status == "Active" ? "rgba(181,196,177,0.4)" : "var(--arena-media)");
+                             color: @(_session.Status == "Active" ? "var(--salvia-oscura)" : "var(--terracota-oscura)");">
+                    • @_session.Status
+                </span>
+            </div>
+
+            <div class="sue-info-grid">
+                <div>
+                    <p class="sue-info-label">Condición</p>
+                    <p class="sue-info-value">@_session.Condition</p>
+                </div>
+                <div>
+                    <p class="sue-info-label">Emoción detectada</p>
+                    <p class="sue-info-value">@(_session.LastDetectedEmotion ?? "—")</p>
+                </div>
+                <div>
+                    <p class="sue-info-label">Mensajes</p>
+                    <p class="sue-info-value">@_session.ConversationTurnCount</p>
+                </div>
+                <div>
+                    <p class="sue-info-label">Muestras emocionales</p>
+                    <p class="sue-info-value">@_session.EmotionSampleCount</p>
+                </div>
+                <div>
+                    <p class="sue-info-label">Estado del avatar</p>
+                    <p class="sue-info-value">@_session.AvatarState</p>
+                </div>
+                <div>
+                    <p class="sue-info-label">Creada</p>
+                    <p class="sue-info-value">@_session.CreatedAtUtc.ToLocalTime().ToString("g")</p>
+                </div>
+            </div>
+
+            <div style="margin-top: 24px; display: flex; gap: 12px; flex-wrap: wrap;">
+                <button class="btn-tierra" style="width: auto; padding: 12px 24px;" @onclick="GoToWorkspace">
+                    Ver detalles
+                </button>
+                <button class="btn-ghost" style="width: auto;" @onclick="GoToWorkspace">
+                    Continuar sesión
+                </button>
+            </div>
+        </div>
+
+        <div class="sue-card" style="background: var(--arena-media); text-align: center; padding: 32px;">
+            <p class="sue-info-value">Próximamente: historial completo de sesiones, filtros y comparativas.</p>
+        </div>
+    }
+</div>
+
+@code {
+    private ExperimentSessionSnapshotDto? _session;
+    private bool _isLoading = true;
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            _session = await ExperimentSessionApiClient.GetLatestAsync();
+        }
+        catch (ApiException exception) when (exception.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            await AuthStateProvider.SignOutAsync();
+            NavigationManager.NavigateTo("/login?returnUrl=%2Fsessions", replace: true);
+        }
+        catch (ApiException exception)
+        {
+            _errorMessage = exception.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void GoToWorkspace()
+    {
+        NavigationManager.NavigateTo("/workspace");
+    }
+}
