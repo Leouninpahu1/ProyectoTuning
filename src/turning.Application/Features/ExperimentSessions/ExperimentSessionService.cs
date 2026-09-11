@@ -36,9 +36,9 @@ public sealed class ExperimentSessionService : IExperimentSessionService
         var s = await _repo.GetLatestByOwnerAsync(ownerUserId, cancellationToken);
         return s is null ? null : Map(s);
     }
-    public async Task<ExperimentSessionSnapshot> GetByIdAsync(Guid id, CancellationToken ct = default)
+    public async Task<ExperimentSessionSnapshot> GetByIdAsync(Guid id, Guid requestingUserId, bool isPrivilegedRequester, CancellationToken ct = default)
     {
-        var s = await _repo.GetByIdAsync(id, ct) ?? throw new TurningApplicationException("Sesion no encontrada.", "SESSION_NOT_FOUND");
+        var s = await GetAccessibleSessionAsync(id, requestingUserId, isPrivilegedRequester, ct);
         return Map(s);
     }
     public async Task<PagedSessionsResult> ListByParticipantAsync(Guid participantId, Guid requestingUserId, bool isPrivilegedRequester, int page, int pageSize, CancellationToken ct = default)
@@ -49,16 +49,16 @@ public sealed class ExperimentSessionService : IExperimentSessionService
         var total = await _repo.CountByOwnerAsync(participantId, ct);
         return new PagedSessionsResult { Items = items.Select(Map).ToList(), Total = total, Page = page, PageSize = pageSize };
     }
-    public async Task<ExperimentSessionSnapshot> ActivateAsync(Guid id, CancellationToken ct = default)
+    public async Task<ExperimentSessionSnapshot> ActivateAsync(Guid id, Guid requestingUserId, bool isPrivilegedRequester, CancellationToken ct = default)
     {
-        var s = await _repo.GetByIdAsync(id, ct) ?? throw new TurningApplicationException("Sesion no encontrada.", "SESSION_NOT_FOUND");
+        var s = await GetAccessibleSessionAsync(id, requestingUserId, isPrivilegedRequester, ct);
         try { s.Activate(TimeSpan.FromSeconds(_opts.DurationSeconds)); } catch (DomainException ex) { throw new TurningApplicationException(ex.Message, "SESSION_CONFLICT"); }
         try { await _repo.SaveChangesAsync(ct); } catch (Exception ex) when (ex.GetType().Name.Contains("Concurrency")) { throw new TurningApplicationException("Conflicto de concurrencia.", "SESSION_CONFLICT"); }
         return Map(s);
     }
-    public async Task<ExperimentSessionSnapshot> CompleteAsync(Guid id, CancellationToken ct = default)
+    public async Task<ExperimentSessionSnapshot> CompleteAsync(Guid id, Guid requestingUserId, bool isPrivilegedRequester, CancellationToken ct = default)
     {
-        var s = await _repo.GetByIdAsync(id, ct) ?? throw new TurningApplicationException("Sesion no encontrada.", "SESSION_NOT_FOUND");
+        var s = await GetAccessibleSessionAsync(id, requestingUserId, isPrivilegedRequester, ct);
         try { s.Complete(); } catch (DomainException ex) { throw new TurningApplicationException(ex.Message, "SESSION_CONFLICT"); }
         try { await _repo.SaveChangesAsync(ct); } catch (Exception ex) when (ex.GetType().Name.Contains("Concurrency")) { throw new TurningApplicationException("Conflicto de concurrencia.", "SESSION_CONFLICT"); }
         return Map(s);
@@ -70,6 +70,19 @@ public sealed class ExperimentSessionService : IExperimentSessionService
         try { s.Cancel(reason); } catch (DomainException ex) { throw new TurningApplicationException(ex.Message, "SESSION_CONFLICT"); }
         try { await _repo.SaveChangesAsync(ct); } catch (Exception ex) when (ex.GetType().Name.Contains("Concurrency")) { throw new TurningApplicationException("Conflicto de concurrencia.", "SESSION_CONFLICT"); }
         return Map(s);
+    }
+
+    /// <summary>
+    /// Resuelve una sesion aplicando aislamiento por propietario: un solicitante que no
+    /// es dueno ni privilegiado recibe el mismo SESSION_NOT_FOUND que si no existiera,
+    /// para no filtrar la existencia de sesiones ajenas por enumeracion de GUIDs.
+    /// </summary>
+    private async Task<ExperimentSession> GetAccessibleSessionAsync(Guid id, Guid requestingUserId, bool isPrivilegedRequester, CancellationToken ct)
+    {
+        var s = await _repo.GetByIdAsync(id, ct) ?? throw new TurningApplicationException("Sesion no encontrada.", "SESSION_NOT_FOUND");
+        if (!isPrivilegedRequester && s.OwnerUserId != requestingUserId)
+            throw new TurningApplicationException("Sesion no encontrada.", "SESSION_NOT_FOUND");
+        return s;
     }
 
     private static ExperimentalCondition ParseCondition(string? preferredCondition)

@@ -80,4 +80,117 @@ public class ExperimentSessionServiceTests
 
         result.Total.Should().Be(0);
     }
+
+    [Fact]
+    public async Task GetByIdAsync_ShouldThrowNotFound_WhenRequesterIsNotOwner()
+    {
+        var service = CreateService();
+        var session = ExperimentSession.Create(Guid.NewGuid(), ExperimentalCondition.AI);
+        _experimentSessionRepository.GetByIdAsync(session.Id, Arg.Any<CancellationToken>()).Returns(session);
+
+        var act = () => service.GetByIdAsync(session.Id, requestingUserId: Guid.NewGuid(), isPrivilegedRequester: false);
+
+        var ex = await act.Should().ThrowAsync<Turning.Application.Exceptions.ApplicationException>();
+        ex.Which.Code.Should().Be("SESSION_NOT_FOUND");
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_ShouldReturnSnapshot_WhenRequesterIsOwner()
+    {
+        var service = CreateService();
+        var ownerId = Guid.NewGuid();
+        var session = ExperimentSession.Create(ownerId, ExperimentalCondition.Human);
+        _experimentSessionRepository.GetByIdAsync(session.Id, Arg.Any<CancellationToken>()).Returns(session);
+
+        var result = await service.GetByIdAsync(session.Id, requestingUserId: ownerId, isPrivilegedRequester: false);
+
+        result.Id.Should().Be(session.Id);
+        result.Condition.Should().Be("Human");
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_ShouldReturnSnapshot_WhenRequesterIsPrivileged()
+    {
+        var service = CreateService();
+        var session = ExperimentSession.Create(Guid.NewGuid(), ExperimentalCondition.AI);
+        _experimentSessionRepository.GetByIdAsync(session.Id, Arg.Any<CancellationToken>()).Returns(session);
+
+        var result = await service.GetByIdAsync(session.Id, requestingUserId: Guid.NewGuid(), isPrivilegedRequester: true);
+
+        result.Id.Should().Be(session.Id);
+    }
+
+    [Fact]
+    public async Task ActivateAsync_ShouldThrowNotFoundAndNotMutate_WhenRequesterIsNotOwner()
+    {
+        var service = CreateService();
+        var session = ExperimentSession.Create(Guid.NewGuid(), ExperimentalCondition.AI);
+        _experimentSessionRepository.GetByIdAsync(session.Id, Arg.Any<CancellationToken>()).Returns(session);
+
+        var act = () => service.ActivateAsync(session.Id, requestingUserId: Guid.NewGuid(), isPrivilegedRequester: false);
+
+        var ex = await act.Should().ThrowAsync<Turning.Application.Exceptions.ApplicationException>();
+        ex.Which.Code.Should().Be("SESSION_NOT_FOUND");
+        session.Status.Should().Be(ExperimentSessionStatus.Created);
+        await _experimentSessionRepository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ActivateAsync_ShouldActivate_WhenRequesterIsOwner()
+    {
+        var service = CreateService();
+        var ownerId = Guid.NewGuid();
+        var session = ExperimentSession.Create(ownerId, ExperimentalCondition.AI);
+        _experimentSessionRepository.GetByIdAsync(session.Id, Arg.Any<CancellationToken>()).Returns(session);
+
+        var result = await service.ActivateAsync(session.Id, requestingUserId: ownerId, isPrivilegedRequester: false);
+
+        result.Status.Should().Be("Active");
+        await _experimentSessionRepository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CompleteAsync_ShouldThrowNotFoundAndNotMutate_WhenRequesterIsNotOwner()
+    {
+        var service = CreateService();
+        var session = ExperimentSession.Create(Guid.NewGuid(), ExperimentalCondition.AI);
+        session.Activate(TimeSpan.FromSeconds(300));
+        _experimentSessionRepository.GetByIdAsync(session.Id, Arg.Any<CancellationToken>()).Returns(session);
+
+        var act = () => service.CompleteAsync(session.Id, requestingUserId: Guid.NewGuid(), isPrivilegedRequester: false);
+
+        var ex = await act.Should().ThrowAsync<Turning.Application.Exceptions.ApplicationException>();
+        ex.Which.Code.Should().Be("SESSION_NOT_FOUND");
+        session.Status.Should().Be(ExperimentSessionStatus.Active);
+        await _experimentSessionRepository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CompleteAsync_ShouldComplete_WhenRequesterIsOwner()
+    {
+        var service = CreateService();
+        var ownerId = Guid.NewGuid();
+        var session = ExperimentSession.Create(ownerId, ExperimentalCondition.AI);
+        session.Activate(TimeSpan.FromSeconds(300));
+        _experimentSessionRepository.GetByIdAsync(session.Id, Arg.Any<CancellationToken>()).Returns(session);
+
+        var result = await service.CompleteAsync(session.Id, requestingUserId: ownerId, isPrivilegedRequester: false);
+
+        result.Status.Should().Be("Completed");
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_ShouldThrowNotFound_WhenSessionDoesNotExist()
+    {
+        var service = CreateService();
+        _experimentSessionRepository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((ExperimentSession?)null);
+
+        var act = () => service.GetByIdAsync(Guid.NewGuid(), requestingUserId: Guid.NewGuid(), isPrivilegedRequester: true);
+
+        var ex = await act.Should().ThrowAsync<Turning.Application.Exceptions.ApplicationException>();
+        ex.Which.Code.Should().Be("SESSION_NOT_FOUND");
+    }
+
+    private ExperimentSessionService CreateService() =>
+        new(_experimentSessionRepository, Microsoft.Extensions.Options.Options.Create(new SessionOptions()));
 }
