@@ -21,7 +21,7 @@ builder.Services
     .AddApplicationServices()
     .AddInfrastructureServices(builder.Configuration);
 
-builder.Services.AddCorsConfiguration();
+builder.Services.AddCorsConfiguration(builder.Configuration);
 
 var startupLogger = new Serilog.Extensions.Logging.SerilogLoggerFactory(Log.Logger).CreateLogger("Turning.API.Jwt");
 builder.Services.AddJwtAuthentication(builder.Configuration, builder.Environment, startupLogger);
@@ -96,7 +96,27 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseExceptionHandling();
-app.UseHttpsRedirection();
+
+if (app.Environment.IsDevelopment())
+{
+    // En desarrollo, /api no se redirige a HTTPS. Un preflight OPTIONS no sigue
+    // redirecciones: si se le responde 307, el navegador aborta la peticion y
+    // reporta un error de CORS opaco, sin que la API registre nada. Fuera de
+    // Development se mantiene la redireccion para todo.
+    app.UseWhen(
+        context => !context.Request.Path.StartsWithSegments("/api"),
+        branch => branch.UseHttpsRedirection());
+
+    foreach (var origen in Turning.API.Extensions.ServiceExtensions.GetConfiguredCorsOrigins(builder.Configuration))
+    {
+        app.Logger.LogInformation("CORS: origen permitido {Origen}", origen);
+    }
+}
+else
+{
+    app.UseHttpsRedirection();
+}
+
 app.UseCors("AllowSpecific");
 app.UseAuthentication();
 app.UseAuthorization();
