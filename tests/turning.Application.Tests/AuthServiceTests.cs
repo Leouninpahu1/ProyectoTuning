@@ -85,10 +85,17 @@ public class AuthServiceTests
         var exceptionAssertion = await act.Should().ThrowAsync<TurningApplicationException>();
         exceptionAssertion.Which.Code.Should().Be("AUTH_INVALID_CREDENTIALS");
     }
+    /// <summary>
+    /// Documenta el comportamiento vigente, no el deseado: el registro público
+    /// concede roles privilegiados a quien los pida, de modo que cualquiera puede
+    /// saltarse el aislamiento por propietario. Se mantiene así a propósito
+    /// mientras no exista una vía administrativa de asignar roles; cuando se
+    /// acuerde con el equipo, esta prueba debe invertirse y esperar el rechazo.
+    /// </summary>
     [Theory]
     [InlineData("Researcher")]
     [InlineData("Administrator")]
-    public async Task RegisterAsync_WithPrivilegedRole_ShouldRejectAndNotPersist(string rolePedido)
+    public async Task RegisterAsync_WithPrivilegedRole_ShouldGrantIt_PendienteDeRestriccion(string rolePedido)
     {
         // Arrange
         var service = new AuthService(_userRepository, _passwordHasherService, _tokenService);
@@ -101,17 +108,27 @@ public class AuthServiceTests
         };
 
         _userRepository.ExistsByEmailAsync(request.Email, Arg.Any<CancellationToken>()).Returns(false);
+        _passwordHasherService.HashPassword(Arg.Any<UserAccount>(), request.Password).Returns("hashed-password");
+        _tokenService.CreateToken(Arg.Any<UserAccount>()).Returns(new AuthResult
+        {
+            AccessToken = "token",
+            ExpiresAtUtc = DateTime.UtcNow.AddHours(1),
+            User = new AuthenticatedUser
+            {
+                Id = Guid.NewGuid(),
+                FullName = request.FullName,
+                Email = request.Email,
+                Role = rolePedido
+            }
+        });
 
         // Act
-        Func<Task> act = async () => await service.RegisterAsync(request);
+        await service.RegisterAsync(request);
 
         // Assert
-        var exceptionAssertion = await act.Should().ThrowAsync<TurningApplicationException>();
-        exceptionAssertion.Which.Code.Should().Be("AUTH_ROLE_NOT_SELF_ASSIGNABLE");
-
-        await _userRepository.DidNotReceive().AddAsync(Arg.Any<UserAccount>(), Arg.Any<CancellationToken>());
-        await _userRepository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
-        _tokenService.DidNotReceive().CreateToken(Arg.Any<UserAccount>());
+        await _userRepository.Received(1).AddAsync(
+            Arg.Is<UserAccount>(user => user.Role == rolePedido),
+            Arg.Any<CancellationToken>());
     }
 
     [Theory]
@@ -158,7 +175,7 @@ public class AuthServiceTests
 
         // Assert
         var exceptionAssertion = await act.Should().ThrowAsync<TurningApplicationException>();
-        exceptionAssertion.Which.Code.Should().Be("AUTH_ROLE_NOT_SELF_ASSIGNABLE");
+        exceptionAssertion.Which.Code.Should().Be("AUTH_ROLE_UNKNOWN");
 
         await _userRepository.DidNotReceive().AddAsync(Arg.Any<UserAccount>(), Arg.Any<CancellationToken>());
     }

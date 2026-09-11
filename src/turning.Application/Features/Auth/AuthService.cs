@@ -95,13 +95,16 @@ public sealed class AuthService : IAuthService
 
         if (string.IsNullOrWhiteSpace(request.Role))
             throw new TurningApplicationException(
-                $"El rol es obligatorio. El registro público solo acepta '{UserRoles.Participant}'.",
+                $"El rol es obligatorio. Roles válidos: {string.Join(", ", UserRoles.All)}.",
                 "AUTH_ROLE_REQUIRED");
 
-        if (!UserRoles.IsSelfAssignable(request.Role))
+        // El registro público acepta por ahora cualquier rol conocido, incluidos
+        // los privilegiados. Restringirlo a Participant está pendiente de acordar
+        // con el equipo: hoy no existe otra vía de crear Researchers para pruebas.
+        if (!UserRoles.IsKnown(request.Role))
             throw new TurningApplicationException(
-                $"El rol '{request.Role}' no puede solicitarse en el registro público. Solo se acepta '{UserRoles.Participant}'; los roles privilegiados los asigna un administrador.",
-                "AUTH_ROLE_NOT_SELF_ASSIGNABLE");
+                $"El rol '{request.Role}' no es un rol reconocido. Roles válidos: {string.Join(", ", UserRoles.All)}.",
+                "AUTH_ROLE_UNKNOWN");
     }
 
     private static void ValidateLoginRequest(LoginRequest request)

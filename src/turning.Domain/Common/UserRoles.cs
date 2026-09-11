@@ -1,8 +1,12 @@
 namespace Turning.Domain.Common;
 
 /// <summary>
-/// Roles conocidos del sistema y reglas sobre cuáles puede pedir un usuario
-/// al registrarse por su cuenta.
+/// Roles conocidos del sistema.
+///
+/// Pendiente de acuerdo con el equipo: hoy el registro público concede cualquiera
+/// de estos tres, así que un usuario puede auto-asignarse Researcher o
+/// Administrator y saltarse el aislamiento por propietario. Restringirlo a
+/// Participant exige antes una vía de asignación administrativa, que no existe.
 /// </summary>
 public static class UserRoles
 {
@@ -32,27 +36,10 @@ public static class UserRoles
     ];
 
     /// <summary>
-    /// Roles que un usuario puede solicitar en el registro público.
-    /// Researcher y Administrator quedan fuera a propósito: conceden acceso a
-    /// sesiones ajenas, así que se asignan por seed o por administración
-    /// autenticada, nunca por autoservicio.
-    /// </summary>
-    public static readonly IReadOnlyList<string> SelfAssignable =
-    [
-        Participant
-    ];
-
-    /// <summary>
     /// Indica si el rol es uno de los reconocidos por el sistema.
     /// </summary>
     public static bool IsKnown(string? role) =>
         role is not null && All.Contains(role.Trim(), StringComparer.OrdinalIgnoreCase);
-
-    /// <summary>
-    /// Indica si el rol puede solicitarse desde el registro público.
-    /// </summary>
-    public static bool IsSelfAssignable(string? role) =>
-        role is not null && SelfAssignable.Contains(role.Trim(), StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Devuelve el rol con la grafía canónica del sistema.
