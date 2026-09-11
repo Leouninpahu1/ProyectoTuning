@@ -114,13 +114,6 @@ public sealed class ExperimentSessionService : IExperimentSessionService
         };
     }
 
-    private static ExperimentSessionSnapshot Map(ExperimentSession s) => new()
-    {
-        Id = s.Id, SessionCode = s.SessionCode, Condition = s.Condition.ToString(), Status = s.Status.ToString(),
-        AvatarState = s.AvatarState, ConversationTurnCount = s.ConversationTurnCount, EmotionSampleCount = s.EmotionSampleCount,
-        LastDetectedEmotion = s.LastDetectedEmotion, CreatedAtUtc = s.CreatedAt, ActivatedAtUtc = s.ActivatedAtUtc, ExpiresAtUtc = s.ExpiresAtUtc,
-        LastActivityAtUtc = s.LastActivityAtUtc, CompletedAtUtc = s.CompletedAtUtc, CancelledAtUtc = s.CancelledAtUtc, CancellationReason = s.CancellationReason,
-        ConversationStage = s.ConversationTurnCount == 0 ? "ready-for-first-turn" : "in-progress",
-        EmotionStage = s.EmotionSampleCount == 0 ? "ready-for-first-signal" : "monitoring", AvatarStage = s.AvatarState
-    };
+    private static ExperimentSessionSnapshot Map(ExperimentSession s) =>
+        ExperimentSessionSnapshotMapper.ToSnapshot(s);
 }
