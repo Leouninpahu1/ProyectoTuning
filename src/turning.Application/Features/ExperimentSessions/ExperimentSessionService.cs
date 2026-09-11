@@ -80,10 +80,24 @@ public sealed class ExperimentSessionService : IExperimentSessionService
     private async Task<ExperimentSession> GetAccessibleSessionAsync(Guid id, Guid requestingUserId, bool isPrivilegedRequester, CancellationToken ct)
     {
         var s = await _repo.GetByIdAsync(id, ct) ?? throw new TurningApplicationException("Sesion no encontrada.", "SESSION_NOT_FOUND");
-        if (!isPrivilegedRequester && s.OwnerUserId != requestingUserId)
+        if (!HasAccess(s, requestingUserId, isPrivilegedRequester))
             throw new TurningApplicationException("Sesion no encontrada.", "SESSION_NOT_FOUND");
         return s;
     }
+
+    /// <inheritdoc />
+    public async Task<bool> IsSessionAccessibleAsync(Guid sessionId, Guid requestingUserId, bool isPrivilegedRequester, CancellationToken ct = default)
+    {
+        var s = await _repo.GetByIdAsync(sessionId, ct);
+        return s is not null && HasAccess(s, requestingUserId, isPrivilegedRequester);
+    }
+
+    /// <summary>
+    /// Unica definicion de "puede operar sobre esta sesion": el dueno, o un
+    /// solicitante privilegiado.
+    /// </summary>
+    private static bool HasAccess(ExperimentSession session, Guid requestingUserId, bool isPrivilegedRequester) =>
+        isPrivilegedRequester || session.OwnerUserId == requestingUserId;
 
     private static ExperimentalCondition ParseCondition(string? preferredCondition)
     {

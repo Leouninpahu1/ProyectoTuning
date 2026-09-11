@@ -29,7 +29,13 @@ builder.Services.AddJwtAuthentication(builder.Configuration, builder.Environment
 builder.Services.AddAuthorization();
 
 // Agregar controllers y Swagger
-builder.Services.AddControllers();
+// El filtro de propietario va global: las rutas anidadas bajo
+// /api/sessions/{sessionId}/... nacieron sin validarlo, y hacerlo opt-in
+// repetiria el problema con el proximo controller que se agregue.
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add<Turning.API.Filters.SessionOwnershipFilter>();
+});
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 

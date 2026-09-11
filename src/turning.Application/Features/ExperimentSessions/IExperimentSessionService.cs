@@ -26,4 +26,14 @@ public interface IExperimentSessionService
     /// </summary>
     Task<ExperimentSessionSnapshot> CompleteAsync(Guid id, Guid requestingUserId, bool isPrivilegedRequester, CancellationToken ct = default);
     Task<ExperimentSessionSnapshot> CancelAsync(Guid id, string reason, Guid actorId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Indica si el solicitante puede operar sobre la sesion dada. Devuelve false
+    /// tanto cuando la sesion no existe como cuando existe pero es ajena: quien
+    /// pregunta no debe poder distinguir ambos casos.
+    ///
+    /// Existe para que las rutas anidadas bajo /api/sessions/{sessionId}/... puedan
+    /// aplicar el mismo aislamiento sin reimplementar la regla en cada controller.
+    /// </summary>
+    Task<bool> IsSessionAccessibleAsync(Guid sessionId, Guid requestingUserId, bool isPrivilegedRequester, CancellationToken ct = default);
 }

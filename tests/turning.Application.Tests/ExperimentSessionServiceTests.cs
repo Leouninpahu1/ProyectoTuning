@@ -191,6 +191,63 @@ public class ExperimentSessionServiceTests
         ex.Which.Code.Should().Be("SESSION_NOT_FOUND");
     }
 
+    // --- IsSessionAccessibleAsync: la regla que consumen las rutas anidadas ---
+
+    [Fact]
+    public async Task IsSessionAccessibleAsync_ShouldBeTrue_ForOwner()
+    {
+        var service = CreateService();
+        var ownerUserId = Guid.NewGuid();
+        var session = ExperimentSession.Create(ownerUserId, ExperimentalCondition.AI);
+        _experimentSessionRepository.GetByIdAsync(session.Id, Arg.Any<CancellationToken>()).Returns(session);
+
+        var accesible = await service.IsSessionAccessibleAsync(session.Id, ownerUserId, isPrivilegedRequester: false);
+
+        accesible.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task IsSessionAccessibleAsync_ShouldBeFalse_ForStranger()
+    {
+        var service = CreateService();
+        var session = ExperimentSession.Create(Guid.NewGuid(), ExperimentalCondition.AI);
+        _experimentSessionRepository.GetByIdAsync(session.Id, Arg.Any<CancellationToken>()).Returns(session);
+
+        var accesible = await service.IsSessionAccessibleAsync(session.Id, Guid.NewGuid(), isPrivilegedRequester: false);
+
+        accesible.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task IsSessionAccessibleAsync_ShouldBeTrue_ForPrivilegedStranger()
+    {
+        var service = CreateService();
+        var session = ExperimentSession.Create(Guid.NewGuid(), ExperimentalCondition.AI);
+        _experimentSessionRepository.GetByIdAsync(session.Id, Arg.Any<CancellationToken>()).Returns(session);
+
+        var accesible = await service.IsSessionAccessibleAsync(session.Id, Guid.NewGuid(), isPrivilegedRequester: true);
+
+        accesible.Should().BeTrue();
+    }
+
+    /// <summary>
+    /// Una sesion inexistente y una ajena deben ser indistinguibles para quien
+    /// pregunta: ambas devuelven false y el filtro responde el mismo 404.
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task IsSessionAccessibleAsync_ShouldBeFalse_WhenSessionDoesNotExist(bool isPrivileged)
+    {
+        var service = CreateService();
+        var sessionId = Guid.NewGuid();
+        _experimentSessionRepository.GetByIdAsync(sessionId, Arg.Any<CancellationToken>()).Returns((ExperimentSession?)null);
+
+        var accesible = await service.IsSessionAccessibleAsync(sessionId, Guid.NewGuid(), isPrivileged);
+
+        accesible.Should().BeFalse();
+    }
+
     private ExperimentSessionService CreateService() =>
         new(_experimentSessionRepository, Microsoft.Extensions.Options.Options.Create(new SessionOptions()));
 }
