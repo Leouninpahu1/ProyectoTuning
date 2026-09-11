@@ -1,7 +1,4 @@
-using System.Text;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using Turning.API.Extensions;
 using Turning.API.Middleware;
@@ -26,28 +23,8 @@ builder.Services
 
 builder.Services.AddCorsConfiguration();
 
-var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "Turning.API";
-var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "Turning.Web";
-var jwtSigningKey = builder.Configuration["Jwt:SigningKey"]
-    ?? "please-change-this-development-key-with-at-least-32-chars";
-var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSigningKey));
-
-builder.Services
-    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateIssuerSigningKey = true,
-            ValidateLifetime = true,
-            ValidIssuer = jwtIssuer,
-            ValidAudience = jwtAudience,
-            IssuerSigningKey = signingKey,
-            ClockSkew = TimeSpan.FromMinutes(1)
-        };
-    });
+var startupLogger = new Serilog.Extensions.Logging.SerilogLoggerFactory(Log.Logger).CreateLogger("Turning.API.Jwt");
+builder.Services.AddJwtAuthentication(builder.Configuration, builder.Environment, startupLogger);
 
 builder.Services.AddAuthorization();
 

@@ -44,6 +44,8 @@ public static class DependencyInjectionExtensions
         services.AddScoped<IUserAccountRepository, UserAccountRepository>();
         services.AddScoped<IPasswordHasherService, PasswordHasherService>();
         services.AddScoped<ITokenService, JwtTokenService>();
+        services.Configure<Turning.Application.Features.Auth.JwtOptions>(
+            configuration.GetSection(Turning.Application.Features.Auth.JwtOptions.SectionName));
         services.Configure<Turning.Application.Features.ExperimentSessions.SessionOptions>(configuration.GetSection("Session"));
         services.Configure<Turning.Infrastructure.Services.SessionOptions>(configuration.GetSection("Session"));
         services.AddHostedService<Services.SessionSchedulerService>();
