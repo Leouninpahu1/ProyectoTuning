@@ -1,5 +1,6 @@
 using Turning.Application.Exceptions;
 using Turning.Application.Interfaces;
+using Turning.Domain.Common;
 using Turning.Domain.Entities;
 using TurningApplicationException = Turning.Application.Exceptions.ApplicationException;
 
@@ -91,6 +92,16 @@ public sealed class AuthService : IAuthService
 
         if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 8)
             throw new TurningApplicationException("La contraseña debe tener al menos 8 caracteres.", "AUTH_INVALID_REQUEST");
+
+        if (string.IsNullOrWhiteSpace(request.Role))
+            throw new TurningApplicationException(
+                $"El rol es obligatorio. El registro público solo acepta '{UserRoles.Participant}'.",
+                "AUTH_ROLE_REQUIRED");
+
+        if (!UserRoles.IsSelfAssignable(request.Role))
+            throw new TurningApplicationException(
+                $"El rol '{request.Role}' no puede solicitarse en el registro público. Solo se acepta '{UserRoles.Participant}'; los roles privilegiados los asigna un administrador.",
+                "AUTH_ROLE_NOT_SELF_ASSIGNABLE");
     }
 
     private static void ValidateLoginRequest(LoginRequest request)

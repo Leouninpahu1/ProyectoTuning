@@ -53,7 +53,7 @@ public sealed class UserAccount : BaseEntity
     /// <summary>
     /// Crea una nueva cuenta de usuario válida.
     /// </summary>
-    public static UserAccount Create(string email, string fullName, string passwordHash, string role = "Researcher")
+    public static UserAccount Create(string email, string fullName, string passwordHash, string role)
     {
         if (string.IsNullOrWhiteSpace(email))
             throw new ArgumentException("El correo es obligatorio.", nameof(email));
@@ -67,7 +67,10 @@ public sealed class UserAccount : BaseEntity
         if (string.IsNullOrWhiteSpace(role))
             throw new ArgumentException("El rol es obligatorio.", nameof(role));
 
-        return new UserAccount(email, fullName, passwordHash, role);
+        if (!UserRoles.IsKnown(role))
+            throw new ArgumentException($"El rol '{role}' no es un rol reconocido del sistema.", nameof(role));
+
+        return new UserAccount(email, fullName, passwordHash, UserRoles.Normalize(role));
     }
 
     /// <summary>

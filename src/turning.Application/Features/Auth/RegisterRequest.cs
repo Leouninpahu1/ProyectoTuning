@@ -21,7 +21,9 @@ public sealed class RegisterRequest
     public required string Password { get; init; }
 
     /// <summary>
-    /// Rol solicitado; por defecto se usa Researcher.
+    /// Rol solicitado. Es obligatorio y desde el registro público solo se
+    /// acepta <see cref="Turning.Domain.Common.UserRoles.Participant"/>:
+    /// los roles privilegiados se asignan por seed o por administración.
     /// </summary>
-    public string Role { get; init; } = "Researcher";
+    public required string Role { get; init; }
 }

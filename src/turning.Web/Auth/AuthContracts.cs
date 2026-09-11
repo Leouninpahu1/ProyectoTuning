@@ -15,7 +15,7 @@ public sealed class RegisterRequestDto
 
     public required string Password { get; init; }
 
-    public string Role { get; init; } = "Researcher";
+    public string Role { get; init; } = "Participant";
 }
 
 public sealed class AuthResultDto

@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Turning.Domain.Common;
 using Turning.Domain.Entities;
 using Turning.Infrastructure.Persistence;
 using Turning.Infrastructure.Services;
@@ -29,7 +30,7 @@ public class BalancedAssignmentServiceTests : IDisposable
         _dbContext = new TurningDbContext(options);
         _dbContext.Database.EnsureCreated();
 
-        var owner = UserAccount.Create("assignment-owner@example.com", "Assignment Owner", "hash-value");
+        var owner = UserAccount.Create("assignment-owner@example.com", "Assignment Owner", "hash-value", UserRoles.Participant);
         _dbContext.UserAccounts.Add(owner);
         _dbContext.SaveChanges();
         _ownerId = owner.Id;

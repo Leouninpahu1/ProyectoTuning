@@ -30,6 +30,8 @@ public sealed class AuthController : ControllerBase
     [AllowAnonymous]
     [HttpPost("register")]
     [ProducesResponseType(typeof(AuthResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<AuthResult>> Register([FromBody] RegisterRequest request, CancellationToken cancellationToken)
     {
         var result = await _authService.RegisterAsync(request, cancellationToken);

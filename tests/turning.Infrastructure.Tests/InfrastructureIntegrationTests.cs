@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Turning.Domain.Common;
 using Turning.Domain.Entities;
 using Turning.Infrastructure.Persistence;
 using Turning.Infrastructure.Repositories;
@@ -38,7 +39,7 @@ public class InfrastructureIntegrationTests : IDisposable
     {
         // Arrange
         var repository = new UserAccountRepository(_dbContext);
-        var user = UserAccount.Create("auth@example.com", "Auth User", "hash-value");
+        var user = UserAccount.Create("auth@example.com", "Auth User", "hash-value", UserRoles.Participant);
 
         await repository.AddAsync(user);
         await repository.SaveChangesAsync();
@@ -57,7 +58,7 @@ public class InfrastructureIntegrationTests : IDisposable
     {
         // Arrange
         var repository = new ExperimentSessionRepository(_dbContext);
-        var owner = UserAccount.Create("owner@example.com", "Session Owner", "hash-value");
+        var owner = UserAccount.Create("owner@example.com", "Session Owner", "hash-value", UserRoles.Participant);
         _dbContext.UserAccounts.Add(owner);
         await _dbContext.SaveChangesAsync();
         var ownerUserId = owner.Id;
@@ -85,7 +86,7 @@ public class InfrastructureIntegrationTests : IDisposable
         // Arrange
         var sessionRepository = new ExperimentSessionRepository(_dbContext);
         var conversationRepository = new ConversationTurnRepository(_dbContext);
-        var owner = UserAccount.Create("conversation-owner@example.com", "Conversation Owner", "hash-value");
+        var owner = UserAccount.Create("conversation-owner@example.com", "Conversation Owner", "hash-value", UserRoles.Participant);
         _dbContext.UserAccounts.Add(owner);
         await _dbContext.SaveChangesAsync();
         var session = ExperimentSession.Create(owner.Id, ExperimentalCondition.AI);
@@ -113,8 +114,8 @@ public class InfrastructureIntegrationTests : IDisposable
     {
         // Arrange
         var repository = new ExperimentSessionRepository(_dbContext);
-        var ownerA = UserAccount.Create("owner-a@example.com", "Owner A", "hash-value");
-        var ownerB = UserAccount.Create("owner-b@example.com", "Owner B", "hash-value");
+        var ownerA = UserAccount.Create("owner-a@example.com", "Owner A", "hash-value", UserRoles.Participant);
+        var ownerB = UserAccount.Create("owner-b@example.com", "Owner B", "hash-value", UserRoles.Participant);
         _dbContext.UserAccounts.AddRange(ownerA, ownerB);
         await _dbContext.SaveChangesAsync();
 

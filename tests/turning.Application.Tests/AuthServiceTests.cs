@@ -2,6 +2,7 @@ using FluentAssertions;
 using NSubstitute;
 using Turning.Application.Features.Auth;
 using Turning.Application.Interfaces;
+using Turning.Domain.Common;
 using Turning.Domain.Entities;
 using TurningApplicationException = Turning.Application.Exceptions.ApplicationException;
 using Xunit;
@@ -27,7 +28,7 @@ public class AuthServiceTests
             FullName = "Ada Lovelace",
             Email = "ada@example.com",
             Password = "secret123",
-            Role = "Researcher"
+            Role = UserRoles.Participant
         };
 
         _userRepository.ExistsByEmailAsync(request.Email, Arg.Any<CancellationToken>()).Returns(false);
@@ -68,7 +69,7 @@ public class AuthServiceTests
     {
         // Arrange
         var service = new AuthService(_userRepository, _passwordHasherService, _tokenService);
-        var user = UserAccount.Create("grace@example.com", "Grace Hopper", "stored-hash");
+        var user = UserAccount.Create("grace@example.com", "Grace Hopper", "stored-hash", UserRoles.Participant);
 
         _userRepository.GetByEmailAsync("grace@example.com", Arg.Any<CancellationToken>()).Returns(user);
         _passwordHasherService.VerifyPassword(user, "wrong-password").Returns(false);
@@ -83,5 +84,122 @@ public class AuthServiceTests
         // Assert
         var exceptionAssertion = await act.Should().ThrowAsync<TurningApplicationException>();
         exceptionAssertion.Which.Code.Should().Be("AUTH_INVALID_CREDENTIALS");
+    }
+    [Theory]
+    [InlineData("Researcher")]
+    [InlineData("Administrator")]
+    public async Task RegisterAsync_WithPrivilegedRole_ShouldRejectAndNotPersist(string rolePedido)
+    {
+        // Arrange
+        var service = new AuthService(_userRepository, _passwordHasherService, _tokenService);
+        var request = new RegisterRequest
+        {
+            FullName = "Mallory",
+            Email = "mallory@example.com",
+            Password = "secret123",
+            Role = rolePedido
+        };
+
+        _userRepository.ExistsByEmailAsync(request.Email, Arg.Any<CancellationToken>()).Returns(false);
+
+        // Act
+        Func<Task> act = async () => await service.RegisterAsync(request);
+
+        // Assert
+        var exceptionAssertion = await act.Should().ThrowAsync<TurningApplicationException>();
+        exceptionAssertion.Which.Code.Should().Be("AUTH_ROLE_NOT_SELF_ASSIGNABLE");
+
+        await _userRepository.DidNotReceive().AddAsync(Arg.Any<UserAccount>(), Arg.Any<CancellationToken>());
+        await _userRepository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+        _tokenService.DidNotReceive().CreateToken(Arg.Any<UserAccount>());
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task RegisterAsync_WithoutRole_ShouldRejectAndNotPersist(string rolePedido)
+    {
+        // Arrange
+        var service = new AuthService(_userRepository, _passwordHasherService, _tokenService);
+        var request = new RegisterRequest
+        {
+            FullName = "Sin Rol",
+            Email = "sin-rol@example.com",
+            Password = "secret123",
+            Role = rolePedido
+        };
+
+        // Act
+        Func<Task> act = async () => await service.RegisterAsync(request);
+
+        // Assert
+        var exceptionAssertion = await act.Should().ThrowAsync<TurningApplicationException>();
+        exceptionAssertion.Which.Code.Should().Be("AUTH_ROLE_REQUIRED");
+
+        await _userRepository.DidNotReceive().AddAsync(Arg.Any<UserAccount>(), Arg.Any<CancellationToken>());
+        await _userRepository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RegisterAsync_WithUnknownRole_ShouldRejectBeforeTouchingRepository()
+    {
+        // Arrange
+        var service = new AuthService(_userRepository, _passwordHasherService, _tokenService);
+        var request = new RegisterRequest
+        {
+            FullName = "Rol Inventado",
+            Email = "inventado@example.com",
+            Password = "secret123",
+            Role = "SuperAdmin"
+        };
+
+        // Act
+        Func<Task> act = async () => await service.RegisterAsync(request);
+
+        // Assert
+        var exceptionAssertion = await act.Should().ThrowAsync<TurningApplicationException>();
+        exceptionAssertion.Which.Code.Should().Be("AUTH_ROLE_NOT_SELF_ASSIGNABLE");
+
+        await _userRepository.DidNotReceive().AddAsync(Arg.Any<UserAccount>(), Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData("participant")]
+    [InlineData("PARTICIPANT")]
+    [InlineData("  Participant  ")]
+    public async Task RegisterAsync_WithParticipantInAnyCasing_ShouldPersistCanonicalRole(string rolePedido)
+    {
+        // Arrange
+        var service = new AuthService(_userRepository, _passwordHasherService, _tokenService);
+        var request = new RegisterRequest
+        {
+            FullName = "Casing Libre",
+            Email = "casing@example.com",
+            Password = "secret123",
+            Role = rolePedido
+        };
+
+        _userRepository.ExistsByEmailAsync(request.Email, Arg.Any<CancellationToken>()).Returns(false);
+        _passwordHasherService.HashPassword(Arg.Any<UserAccount>(), request.Password).Returns("hashed-password");
+        _tokenService.CreateToken(Arg.Any<UserAccount>()).Returns(new AuthResult
+        {
+            AccessToken = "token",
+            ExpiresAtUtc = DateTime.UtcNow.AddHours(1),
+            User = new AuthenticatedUser
+            {
+                Id = Guid.NewGuid(),
+                FullName = request.FullName,
+                Email = request.Email,
+                Role = UserRoles.Participant
+            }
+        });
+
+        // Act
+        await service.RegisterAsync(request);
+
+        // Assert
+        await _userRepository.Received(1).AddAsync(
+            Arg.Is<UserAccount>(user => user.Role == UserRoles.Participant),
+            Arg.Any<CancellationToken>());
     }
 }
