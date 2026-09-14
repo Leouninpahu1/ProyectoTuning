@@ -1,0 +1,188 @@
+{
+  "info": {
+    "name": "Turning - Colección E2E MVP",
+    "description": "Flujo: health -> register -> login -> me -> create session -> activate -> conversation-turns -> complete -> survey -> results. 12 requests, en el orden que se deben ejecutar.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "https://localhost:7000" },
+    { "key": "token", "value": "" },
+    { "key": "sessionId", "value": "" },
+    { "key": "surveyDefinitionId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "01 - Health check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/health", "host": ["{{baseUrl}}"], "path": ["api", "health"] }
+      }
+    },
+    {
+      "name": "02 - Auth - Register",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fullName\": \"Participante Uno\",\n  \"email\": \"participante1@turning.test\",\n  \"password\": \"Passw0rd!2026\",\n  \"role\": \"Researcher\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/auth/register", "host": ["{{baseUrl}}"], "path": ["api", "auth", "register"] }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const data = pm.response.json();",
+              "if (data.token) { pm.collectionVariables.set('token', data.token); }",
+              "pm.test('status 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Auth - Login",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"participante1@turning.test\",\n  \"password\": \"Passw0rd!2026\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const data = pm.response.json();",
+              "if (data.token) { pm.collectionVariables.set('token', data.token); }",
+              "pm.test('status 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - Auth - Me (usuario autenticado)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": { "raw": "{{baseUrl}}/api/auth/me", "host": ["{{baseUrl}}"], "path": ["api", "auth", "me"] }
+      }
+    },
+    {
+      "name": "05 - Sessions - Create",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"preferredCondition\": \"Human\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/sessions", "host": ["{{baseUrl}}"], "path": ["api", "sessions"] }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const data = pm.response.json();",
+              "if (data.id) { pm.collectionVariables.set('sessionId', data.id); }",
+              "pm.test('status 201', () => pm.response.to.have.status(201));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 - Sessions - Activate",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": { "raw": "{{baseUrl}}/api/sessions/{{sessionId}}/activate", "host": ["{{baseUrl}}"], "path": ["api", "sessions", "{{sessionId}}", "activate"] }
+      }
+    },
+    {
+      "name": "07 - Conversation Turns - Add",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"sender\": \"Participant\",\n  \"message\": \"Hola, este es el primer turno de la conversación.\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/experiment-sessions/{{sessionId}}/conversation-turns",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "experiment-sessions", "{{sessionId}}", "conversation-turns"]
+        }
+      }
+    },
+    {
+      "name": "08 - Conversation Turns - List",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": {
+          "raw": "{{baseUrl}}/api/experiment-sessions/{{sessionId}}/conversation-turns",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "experiment-sessions", "{{sessionId}}", "conversation-turns"]
+        }
+      }
+    },
+    {
+      "name": "09 - Sessions - Complete",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": { "raw": "{{baseUrl}}/api/sessions/{{sessionId}}/complete", "host": ["{{baseUrl}}"], "path": ["api", "sessions", "{{sessionId}}", "complete"] }
+      }
+    },
+    {
+      "name": "10 - Survey - Get",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": { "raw": "{{baseUrl}}/api/sessions/{{sessionId}}/survey", "host": ["{{baseUrl}}"], "path": ["api", "sessions", "{{sessionId}}", "survey"] }
+      }
+    },
+    {
+      "name": "11 - Survey - Submit response",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"surveyDefinitionId\": \"{{surveyDefinitionId}}\",\n  \"answers\": {\n    \"q1\": \"5\",\n    \"q2\": \"Me sentí cómodo con la conversación\"\n  }\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/sessions/{{sessionId}}/survey/responses",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "sessions", "{{sessionId}}", "survey", "responses"]
+        }
+      }
+    },
+    {
+      "name": "12 - Results - Get by session",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": { "raw": "{{baseUrl}}/api/sessions/{{sessionId}}/results", "host": ["{{baseUrl}}"], "path": ["api", "sessions", "{{sessionId}}", "results"] }
+      }
+    }
+  ]
+}
