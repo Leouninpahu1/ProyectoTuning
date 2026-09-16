@@ -93,16 +93,22 @@ public static class AiConfigurationExtensions
         if (!provider.Enabled)
             return;
 
-        if (string.IsNullOrWhiteSpace(provider.ApiKey))
+        if (provider.HasPlaceholderKey)
         {
-            // No es un error: ese eslabon simplemente no esta disponible.
+            // No es un error: ese eslabon simplemente no esta disponible. Se distingue el
+            // marcador de posicion de la ausencia total para que quien lea el log sepa si la
+            // variable esta declarada y pendiente, o si directamente no existe.
             // La ruta de configuracion usa el nombre de la propiedad ("OpenAi"), no el del
             // proveedor ("openai"): sugerir la equivocada manda a configurar una clave que
             // el binder nunca lee.
+            var motivo = string.IsNullOrWhiteSpace(provider.ApiKey)
+                ? "no tiene clave configurada"
+                : "tiene una clave de marcador de posicion";
+
             logger?.LogWarning(
-                "El proveedor de IA '{Provider}' no tiene clave configurada y queda fuera de la cadena. "
+                "El proveedor de IA '{Provider}' {Motivo} y queda fuera de la cadena. "
                 + "Se configura con '{SectionName}:{ConfigurationKey}:ApiKey'.",
-                provider.Name, AiOptions.SectionName, configurationKey);
+                provider.Name, motivo, AiOptions.SectionName, configurationKey);
             return;
         }
 

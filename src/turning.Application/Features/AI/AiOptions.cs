@@ -31,9 +31,14 @@ public sealed class AiProviderOptions
     public string Model { get; set; } = string.Empty;
 
     /// <summary>
-    /// Clave de API. <b>Nunca</b> va en <c>appsettings.json</c>: se configura con
-    /// user-secrets o variable de entorno, igual que la clave de firma del JWT.
+    /// Clave de API.
     /// </summary>
+    /// <remarks>
+    /// En <c>appsettings.json</c> está declarada con un valor de marcador de posición, para
+    /// que se vea qué variable hace falta y con qué nombre. <b>La clave real nunca se
+    /// versiona</b>: se sobreescribe con user-secrets o variable de entorno, igual que la
+    /// clave de firma del JWT. Ver <see cref="PlaceholderApiKeys"/>.
+    /// </remarks>
     public string? ApiKey { get; set; }
 
     /// <summary>
@@ -66,16 +71,69 @@ public sealed class AiProviderOptions
     public string? Title { get; set; }
 
     /// <summary>
+    /// Valores que se reconocen como marcador de posición y no como una clave real.
+    /// </summary>
+    /// <remarks>
+    /// La configuración declara las claves aunque todavía no existan, para que se vea dónde
+    /// van y con qué nombre. Sin esta lista, un marcador de posición se tomaría por válido:
+    /// el proveedor entraría en la cadena, saldría a la red, recibiría un 401 y recién ahí
+    /// se saltaría — una llamada inútil y su latencia en el primer turno de cada sesión.
+    ///
+    /// Reconocerlos permite dejar las variables declaradas y que el sistema se comporte
+    /// exactamente igual que si no estuvieran.
+    /// </remarks>
+    public static readonly IReadOnlyList<string> PlaceholderApiKeys =
+    [
+        "dummy",
+        "changeme",
+        "cambiar",
+        "reemplazar",
+        "pendiente",
+        "todo",
+        "tbd",
+        "none",
+        "null",
+        "your-api-key",
+        "your-api-key-here",
+        "sk-xxx",
+        "sk-...",
+        "sk-or-xxx"
+    ];
+
+    /// <summary>
+    /// Indica si el valor configurado es un marcador de posición en vez de una clave real.
+    /// </summary>
+    public static bool IsPlaceholderApiKey(string? apiKey)
+    {
+        if (string.IsNullOrWhiteSpace(apiKey))
+            return true;
+
+        var normalized = apiKey.Trim();
+
+        return PlaceholderApiKeys.Any(placeholder =>
+                   normalized.Equals(placeholder, StringComparison.OrdinalIgnoreCase))
+               // Cubre variantes como "dummy-openai-key" o "DUMMY_KEY_OPENROUTER".
+               || normalized.StartsWith("dummy", StringComparison.OrdinalIgnoreCase)
+               || normalized.Contains("reemplazar", StringComparison.OrdinalIgnoreCase)
+               || normalized.Contains("placeholder", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Indica si la clave configurada es un marcador de posición.
+    /// </summary>
+    public bool HasPlaceholderKey => IsPlaceholderApiKey(ApiKey);
+
+    /// <summary>
     /// Indica si el proveedor tiene lo mínimo para intentar una llamada.
     /// </summary>
     /// <remarks>
-    /// Un proveedor sin clave no es un error de configuración: significa que ese eslabón de
-    /// la cadena no está disponible y se salta. Por eso esto no forma parte de
-    /// <see cref="AiOptions.Validate"/>.
+    /// Un proveedor sin clave —o con un marcador de posición— no es un error de
+    /// configuración: significa que ese eslabón de la cadena no está disponible y se salta.
+    /// Por eso esto no forma parte de <see cref="AiOptions.Validate"/>.
     /// </remarks>
     public bool IsUsable =>
         Enabled
-        && !string.IsNullOrWhiteSpace(ApiKey)
+        && !HasPlaceholderKey
         && !string.IsNullOrWhiteSpace(BaseUrl)
         && !string.IsNullOrWhiteSpace(Model);
 }

@@ -84,6 +84,33 @@ Ojo con el nombre: la ruta usa `OpenAi` y `OpenRouter` tal como aparecen en la s
 configuración, no `openai`/`openrouter`, que son los nombres con los que cada proveedor se
 identifica en las respuestas y los eventos.
 
+### Las claves ya están declaradas, con valor de marcador de posición
+
+`appsettings.json` trae las dos variables con un valor evidente:
+
+```json
+"Ai": {
+  "OpenAi":     { "ApiKey": "DUMMY-REEMPLAZAR-Ai__OpenAi__ApiKey" },
+  "OpenRouter": { "ApiKey": "DUMMY-REEMPLAZAR-Ai__OpenRouter__ApiKey" }
+}
+```
+
+Están ahí para que se vea qué hace falta y con qué nombre exacto, no porque sirvan. **El
+código reconoce estos valores como marcadores de posición** (`AiProviderOptions.IsPlaceholderApiKey`)
+y trata al proveedor como no disponible, igual que si la variable no existiera.
+
+Eso importa: sin ese reconocimiento, una clave ficticia se tomaría por buena, el proveedor
+entraría en la cadena, saldría a `api.openai.com`, recibiría un 401 y recién entonces se
+saltaría. Una llamada de red inútil y su latencia en el primer turno de cada sesión.
+
+Se reconocen, sin distinguir mayúsculas: cualquier valor que empiece por `dummy` o contenga
+`reemplazar` o `placeholder`, y los literales `changeme`, `cambiar`, `pendiente`, `todo`,
+`tbd`, `none`, `null`, `your-api-key`, `your-api-key-here`, `sk-xxx`, `sk-...`, `sk-or-xxx`.
+
+Cuando llegue una clave real, **no se edita `appsettings.json`**: se sobreescribe por
+user-secrets o entorno, como arriba. Los valores del archivo versionado se quedan como
+están.
+
 ### La diferencia con `Jwt:SigningKey`
 
 Que falte una clave de IA **no impide arrancar en ningún entorno**, y eso es deliberado: la
