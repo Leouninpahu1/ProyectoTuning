@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Mvc;
 using Turning.API.Middleware;
 using Turning.Application.Features.ConversationTurns;
 
+using Turning.API.Filters;
+
 namespace Turning.API.Controllers;
 
 /// <summary>
@@ -17,6 +19,7 @@ namespace Turning.API.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/experiment-sessions/{sessionId:guid}/conversation-turns")]
+[AllowSessionInterlocutor]
 [Produces("application/json")]
 public sealed class ConversationTurnsController : ControllerBase
 {
@@ -34,6 +37,12 @@ public sealed class ConversationTurnsController : ControllerBase
     /// Lista la conversación persistida de una sesión propia, en orden de secuencia.
     /// </summary>
     /// <param name="sessionId">Sesión cuya conversación se consulta.</param>
+    /// <param name="afterSequence">
+    /// Devuelve solo los turnos con secuencia mayor que esta. Pensado para sondear la
+    /// conversación sin volver a descargarla entera: el cliente pasa la última secuencia que
+    /// ya tiene. Omitirlo devuelve la conversación completa, como siempre.
+    /// </param>
+    /// <param name="limit">Máximo de turnos por respuesta. Se limita a 200.</param>
     /// <param name="cancellationToken">Token de cancelación.</param>
     /// <response code="200">Turnos de la conversación, del más antiguo al más reciente.</response>
     /// <response code="404">La sesión no existe, o existe y es ajena: <c>SESSION_NOT_FOUND</c> en ambos casos.</response>
@@ -42,14 +51,18 @@ public sealed class ConversationTurnsController : ControllerBase
     [ProducesResponseType(typeof(IReadOnlyList<ConversationTurnSnapshot>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<IReadOnlyList<ConversationTurnSnapshot>>> List(Guid sessionId, CancellationToken cancellationToken)
+    public async Task<ActionResult<IReadOnlyList<ConversationTurnSnapshot>>> List(
+        Guid sessionId,
+        [FromQuery] int? afterSequence,
+        [FromQuery] int limit = 200,
+        CancellationToken cancellationToken = default)
     {
         if (!TryResolveAuthenticatedUserId(out var userId))
         {
             return Unauthorized();
         }
 
-        var turns = await _conversationTurnService.ListAsync(userId, sessionId, cancellationToken);
+        var turns = await _conversationTurnService.ListAsync(userId, sessionId, afterSequence, limit, cancellationToken);
         return Ok(turns);
     }
 
@@ -64,7 +77,13 @@ public sealed class ConversationTurnsController : ControllerBase
     /// <param name="sessionId">Sesión donde se registra el mensaje.</param>
     /// <param name="request">Emisor y contenido del mensaje.</param>
     /// <param name="cancellationToken">Token de cancelación.</param>
-    /// <response code="200">Turno registrado.</response>
+    /// <response code="200">
+    /// Turno registrado. En condicion AI la respuesta incluye ademas
+    /// <c>interlocutorTurn</c> con el mensaje generado y <c>ai</c> con proveedor y latencia;
+    /// en condicion Human <c>source</c> vale <c>none</c> porque la respuesta llega despues,
+    /// escrita por una persona. <c>degraded</c> indica que la generacion no vino del
+    /// proveedor previsto.
+    /// </response>
     /// <response code="400">
     /// Mensaje vacío (<c>CONVERSATION_EMPTY_MESSAGE</c>), de más de 4000 caracteres
     /// (<c>CONVERSATION_MESSAGE_TOO_LONG</c>), emisor no válido
@@ -73,11 +92,11 @@ public sealed class ConversationTurnsController : ControllerBase
     /// <response code="404">La sesión no existe, o existe y es ajena.</response>
     /// <response code="401">Falta el token o no trae un identificador de usuario válido.</response>
     [HttpPost]
-    [ProducesResponseType(typeof(ConversationTurnSnapshot), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ConversationTurnResult), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiExceptionResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<ConversationTurnSnapshot>> Add(Guid sessionId, [FromBody] AddConversationTurnRequest request, CancellationToken cancellationToken)
+    public async Task<ActionResult<ConversationTurnResult>> Add(Guid sessionId, [FromBody] AddConversationTurnRequest request, CancellationToken cancellationToken)
     {
         if (!TryResolveAuthenticatedUserId(out var userId))
         {

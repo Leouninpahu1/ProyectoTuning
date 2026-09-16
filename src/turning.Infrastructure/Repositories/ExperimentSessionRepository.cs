@@ -49,5 +49,30 @@ public sealed class ExperimentSessionRepository : IExperimentSessionRepository
         => _dbContext.ExperimentSessions.CountAsync(s => s.OwnerUserId == ownerUserId && !s.IsDeleted, ct);
     public Task<ExperimentSession?> GetByCodeAsync(string code, CancellationToken ct = default)
         => _dbContext.ExperimentSessions.FirstOrDefaultAsync(s => s.SessionCode == code && !s.IsDeleted, ct);
+    /// <inheritdoc />
+    public Task<List<ExperimentSession>> ListAwaitingInterlocutorAsync(int page, int pageSize, CancellationToken ct = default)
+        => AwaitingInterlocutorQuery()
+            .OrderBy(s => s.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(ct);
+
+    /// <inheritdoc />
+    public Task<int> CountAwaitingInterlocutorAsync(CancellationToken ct = default)
+        => AwaitingInterlocutorQuery().CountAsync(ct);
+
+    /// <summary>
+    /// Sesiones Human sin interlocutor y todavia vivas. Se ordenan por antiguedad: el que
+    /// lleva mas tiempo esperando se atiende primero.
+    /// </summary>
+    private IQueryable<ExperimentSession> AwaitingInterlocutorQuery()
+        => _dbContext.ExperimentSessions.Where(s =>
+            !s.IsDeleted
+            && s.Condition == ExperimentalCondition.Human
+            && s.InterlocutorUserId == null
+            && s.Status != ExperimentSessionStatus.Completed
+            && s.Status != ExperimentSessionStatus.TimedOut
+            && s.Status != ExperimentSessionStatus.Cancelled);
+
     public Task SaveChangesAsync(CancellationToken cancellationToken = default) => _dbContext.SaveChangesAsync(cancellationToken);
 }

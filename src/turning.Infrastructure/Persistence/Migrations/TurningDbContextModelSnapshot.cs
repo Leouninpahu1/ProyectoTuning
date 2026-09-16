@@ -157,8 +157,14 @@ namespace turning.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int?>("AnalysisLatencyMs")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("CapturedAtUtc")
                         .HasColumnType("datetime2");
+
+                    b.Property<double>("Confidence")
+                        .HasColumnType("float");
 
                     b.Property<Guid?>("ConversationTurnId")
                         .HasColumnType("uniqueidentifier");
@@ -177,6 +183,13 @@ namespace turning.Infrastructure.Persistence.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
+                    b.Property<string>("ModelVersion")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<double?>("Polarity")
+                        .HasColumnType("float");
+
                     b.Property<string>("Provider")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -184,6 +197,10 @@ namespace turning.Infrastructure.Persistence.Migrations
 
                     b.Property<double>("Score")
                         .HasColumnType("float");
+
+                    b.Property<string>("ScoresJson")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
 
                     b.Property<Guid>("SessionId")
                         .HasColumnType("uniqueidentifier");
@@ -287,6 +304,12 @@ namespace turning.Infrastructure.Persistence.Migrations
                     b.Property<DateTime?>("ExpiresAtUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("InterlocutorJoinedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("InterlocutorUserId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
@@ -321,12 +344,16 @@ namespace turning.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("InterlocutorUserId");
+
                     b.HasIndex("SessionCode")
                         .IsUnique();
 
                     b.HasIndex("OwnerUserId", "CreatedAt");
 
                     b.HasIndex("Status", "ActivatedAtUtc");
+
+                    b.HasIndex("Condition", "InterlocutorUserId", "Status");
 
                     b.ToTable("ExperimentSessions", (string)null);
                 });
@@ -660,6 +687,11 @@ namespace turning.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Turning.Domain.Entities.ExperimentSession", b =>
                 {
+                    b.HasOne("Turning.Domain.Entities.UserAccount", null)
+                        .WithMany()
+                        .HasForeignKey("InterlocutorUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Turning.Domain.Entities.UserAccount", null)
                         .WithMany()
                         .HasForeignKey("OwnerUserId")

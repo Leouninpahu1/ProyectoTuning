@@ -25,5 +25,15 @@ public interface IExperimentSessionRepository
     Task<List<ExperimentSession>> ListByOwnerAsync(Guid ownerUserId, int page, int pageSize, CancellationToken ct = default);
     Task<int> CountByOwnerAsync(Guid ownerUserId, CancellationToken ct = default);
     Task<ExperimentSession?> GetByCodeAsync(string code, CancellationToken ct = default);
+
+    /// <summary>
+    /// Lista las sesiones Human que todavia no tienen interlocutor asignado.
+    /// </summary>
+    Task<List<ExperimentSession>> ListAwaitingInterlocutorAsync(int page, int pageSize, CancellationToken ct = default);
+
+    /// <summary>
+    /// Cuenta las sesiones Human que todavia esperan interlocutor.
+    /// </summary>
+    Task<int> CountAwaitingInterlocutorAsync(CancellationToken ct = default);
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
 }

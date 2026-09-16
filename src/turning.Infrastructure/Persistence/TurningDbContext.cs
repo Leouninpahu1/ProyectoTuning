@@ -81,9 +81,16 @@ public sealed class TurningDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(session => session.OwnerUserId)
                 .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<UserAccount>()
+                .WithMany()
+                .HasForeignKey(session => session.InterlocutorUserId)
+                .OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(session => session.SessionCode).IsUnique();
             entity.HasIndex(session => new { session.OwnerUserId, session.CreatedAt });
             entity.HasIndex(session => new { session.Status, session.ActivatedAtUtc });
+            // Indice para resolver el nivel de acceso del interlocutor y la cola de espera.
+            entity.HasIndex(session => session.InterlocutorUserId);
+            entity.HasIndex(session => new { session.Condition, session.InterlocutorUserId, session.Status });
         });
 
         modelBuilder.Entity<SessionAuditEntry>(entity =>
@@ -113,7 +120,7 @@ public sealed class TurningDbContext : DbContext
             entity.HasOne<ExperimentSession>().WithMany().HasForeignKey(turn => turn.ExperimentSessionId).OnDelete(DeleteBehavior.Cascade);
         });
         modelBuilder.Entity<ConditionAssignment>(e=>{e.ToTable("ConditionAssignments");e.HasKey(x=>x.Id);e.Property(x=>x.SessionId).IsRequired();e.HasIndex(x=>x.SessionId).IsUnique();e.Property(x=>x.Strategy).HasMaxLength(50);e.Property(x=>x.Reason).HasMaxLength(500);e.Property(x=>x.Condition).HasConversion<string>().HasMaxLength(20);e.HasOne<ExperimentSession>().WithMany().HasForeignKey(x=>x.SessionId).OnDelete(DeleteBehavior.Cascade);});
-        modelBuilder.Entity<EmotionReading>(e=>{e.ToTable("EmotionReadings");e.HasKey(x=>x.Id);e.Property(x=>x.Emotion).HasMaxLength(50);e.Property(x=>x.Source).HasMaxLength(30);e.Property(x=>x.Provider).HasMaxLength(100);e.HasIndex(x=>new{x.SessionId,x.CapturedAtUtc});e.HasOne<ExperimentSession>().WithMany().HasForeignKey(x=>x.SessionId).OnDelete(DeleteBehavior.Cascade);e.HasOne<ConversationTurn>().WithMany().HasForeignKey(x=>x.ConversationTurnId).OnDelete(DeleteBehavior.NoAction);});
+        modelBuilder.Entity<EmotionReading>(e=>{e.ToTable("EmotionReadings");e.HasKey(x=>x.Id);e.Property(x=>x.Emotion).HasMaxLength(50);e.Property(x=>x.Source).HasMaxLength(30);e.Property(x=>x.Provider).HasMaxLength(100);e.Property(x=>x.ModelVersion).HasMaxLength(50);e.Property(x=>x.ScoresJson).HasMaxLength(1000);e.HasIndex(x=>new{x.SessionId,x.CapturedAtUtc});e.HasOne<ExperimentSession>().WithMany().HasForeignKey(x=>x.SessionId).OnDelete(DeleteBehavior.Cascade);e.HasOne<ConversationTurn>().WithMany().HasForeignKey(x=>x.ConversationTurnId).OnDelete(DeleteBehavior.NoAction);});
         modelBuilder.Entity<AvatarExpression>(e=>{e.ToTable("AvatarExpressions");e.HasKey(x=>x.Id);e.Property(x=>x.ExpressionName).HasMaxLength(50);e.Property(x=>x.ParametersJson).HasMaxLength(2000);e.HasIndex(x=>new{x.SessionId,x.CreatedAt});e.HasOne<ExperimentSession>().WithMany().HasForeignKey(x=>x.SessionId).OnDelete(DeleteBehavior.Cascade);e.HasOne<EmotionReading>().WithMany().HasForeignKey(x=>x.EmotionReadingId).OnDelete(DeleteBehavior.NoAction);});
         modelBuilder.Entity<SurveyDefinition>(e=>{e.ToTable("SurveyDefinitions");e.HasKey(x=>x.Id);e.Property(x=>x.Code).HasMaxLength(50);e.Property(x=>x.Version).HasMaxLength(20);e.Property(x=>x.Name).HasMaxLength(200);e.HasIndex(x=>x.Code).IsUnique();});
         modelBuilder.Entity<SurveyQuestion>(e=>{e.ToTable("SurveyQuestions");e.HasKey(x=>x.Id);e.Property(x=>x.Code).HasMaxLength(50);e.Property(x=>x.Text).HasMaxLength(1000);e.Property(x=>x.Type).HasMaxLength(30);e.HasIndex(x=>new{x.SurveyDefinitionId,x.Order}).IsUnique();e.HasOne<SurveyDefinition>().WithMany(x=>x.Questions).HasForeignKey(x=>x.SurveyDefinitionId).OnDelete(DeleteBehavior.Cascade);});

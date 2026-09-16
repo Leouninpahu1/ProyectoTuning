@@ -22,6 +22,8 @@ public static class DependencyInjectionExtensions
         // services.AddValidatorsFromAssembly(typeof(DependencyInjectionExtensions).Assembly);
 
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<Features.Emotions.ITextEmotionAnalysisService, Features.Emotions.TextEmotionAnalysisService>();
+        services.AddScoped<IConversationOrchestrator, ConversationOrchestrator>();
         services.AddScoped<IConversationTurnService, ConversationTurnService>();
         services.AddScoped<IExperimentSessionService, ExperimentSessionService>();
 

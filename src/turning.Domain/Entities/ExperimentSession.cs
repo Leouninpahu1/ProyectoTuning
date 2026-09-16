@@ -23,7 +23,26 @@ public sealed class ExperimentSession : BaseEntity
 {
     private ExperimentSession() { }
 
+    /// <summary>
+    /// Participante dueno de la sesion (Salon A).
+    /// </summary>
     public Guid OwnerUserId { get; private set; }
+
+    /// <summary>
+    /// Interlocutor humano asignado a la sesion (Salon B), si lo hay.
+    /// </summary>
+    /// <remarks>
+    /// Solo tiene sentido en condicion Human. Es un escalar y no una tabla de participantes
+    /// porque el protocolo es estrictamente diadico, y porque el filtro de autorizacion
+    /// consulta esto en cada peticion con {sessionId}: un join en esa ruta se paga en todas.
+    /// </remarks>
+    public Guid? InterlocutorUserId { get; private set; }
+
+    /// <summary>
+    /// Momento en que el interlocutor se incorporo.
+    /// </summary>
+    public DateTime? InterlocutorJoinedAtUtc { get; private set; }
+
     public string SessionCode { get; private set; } = string.Empty;
     public ExperimentalCondition Condition { get; private set; }
     public ExperimentSessionStatus Status { get; private set; }
@@ -76,13 +95,34 @@ public sealed class ExperimentSession : BaseEntity
         UpdatedAt = now;
     }
 
-    public void RegisterConversationTurn(DateTime? nowUtc = null)
+    /// <summary>
+    /// Duracion por defecto al auto-activar una sesion con el primer turno.
+    /// Coincide con el default de SessionOptions (RF-SES-01).
+    /// </summary>
+    public static readonly TimeSpan DefaultAutoActivationDuration = TimeSpan.FromSeconds(300);
+
+    /// <summary>
+    /// Registra un turno de conversacion. Si la sesion todavia esta en Created, la activa
+    /// con la duracion indicada.
+    /// </summary>
+    /// <remarks>
+    /// La duracion se recibe en vez de fijarla aqui: antes estaba escrita a mano como 300s
+    /// e ignoraba SessionOptions, asi que activar por endpoint y activar por primer turno
+    /// podian dar sesiones con vencimientos distintos.
+    /// </remarks>
+    public void RegisterConversationTurn(TimeSpan autoActivationDuration, DateTime? nowUtc = null)
     {
-        if (Status == ExperimentSessionStatus.Created) Activate(TimeSpan.FromSeconds(300), nowUtc);
+        if (Status == ExperimentSessionStatus.Created) Activate(autoActivationDuration, nowUtc);
         else EnsureActive();
         ConversationTurnCount++;
         RecordActivity(nowUtc);
     }
+
+    /// <summary>
+    /// Registra un turno usando <see cref="DefaultAutoActivationDuration"/>.
+    /// </summary>
+    public void RegisterConversationTurn(DateTime? nowUtc = null) =>
+        RegisterConversationTurn(DefaultAutoActivationDuration, nowUtc);
 
     public void Complete(DateTime? nowUtc = null)
     {
@@ -115,7 +155,84 @@ public sealed class ExperimentSession : BaseEntity
         UpdatedAt = now;
     }
 
-    public void IncrementEmotionSample(){ EmotionSampleCount++; UpdatedAt=DateTime.UtcNow; LastActivityAtUtc=DateTime.UtcNow; }
+    /// <summary>
+    /// Registra una muestra emocional y deja constancia de la ultima emocion detectada.
+    /// </summary>
+    /// <remarks>
+    /// Antes solo incrementaba el contador, asi que LastDetectedEmotion y AvatarState nunca
+    /// cambiaban pese a que el frontend ya los pinta: mostraban "Neutral" y vacio para
+    /// siempre.
+    /// </remarks>
+    public void IncrementEmotionSample(string? detectedEmotion = null, string? avatarState = null)
+    {
+        EmotionSampleCount++;
+
+        if (!string.IsNullOrWhiteSpace(detectedEmotion))
+            LastDetectedEmotion = detectedEmotion;
+
+        if (!string.IsNullOrWhiteSpace(avatarState))
+            AvatarState = avatarState;
+
+        UpdatedAt = DateTime.UtcNow;
+        LastActivityAtUtc = DateTime.UtcNow;
+    }
+    /// <summary>
+    /// Asigna el interlocutor humano de la sesion.
+    /// </summary>
+    /// <remarks>
+    /// Es idempotente para el mismo usuario: reintentar unirse no es un error.
+    /// </remarks>
+    public void AssignInterlocutor(Guid interlocutorUserId, DateTime? nowUtc = null)
+    {
+        if (interlocutorUserId == Guid.Empty)
+            throw new ArgumentException("El interlocutor es obligatorio.", nameof(interlocutorUserId));
+
+        if (Condition != ExperimentalCondition.Human)
+            throw new DomainException("Solo las sesiones de condicion Human admiten un interlocutor humano.");
+
+        if (IsTerminal)
+            throw new DomainException($"Una sesion {Status} no admite interlocutor.");
+
+        if (interlocutorUserId == OwnerUserId)
+            throw new DomainException("El dueno de la sesion no puede ser tambien su interlocutor.");
+
+        if (InterlocutorUserId is not null && InterlocutorUserId != interlocutorUserId)
+            throw new DomainException("La sesion ya tiene otro interlocutor asignado.");
+
+        if (InterlocutorUserId == interlocutorUserId)
+            return;
+
+        var now = nowUtc ?? DateTime.UtcNow;
+        InterlocutorUserId = interlocutorUserId;
+        InterlocutorJoinedAtUtc = now;
+        UpdatedAt = now;
+    }
+
+    /// <summary>
+    /// Libera al interlocutor, dejando la sesion disponible para otro.
+    /// </summary>
+    public void ReleaseInterlocutor(DateTime? nowUtc = null)
+    {
+        if (InterlocutorUserId is null)
+            return;
+
+        var now = nowUtc ?? DateTime.UtcNow;
+        InterlocutorUserId = null;
+        InterlocutorJoinedAtUtc = null;
+        UpdatedAt = now;
+    }
+
+    /// <summary>
+    /// Indica si el usuario es el interlocutor asignado de esta sesion.
+    /// </summary>
+    public bool IsInterlocutor(Guid userId) => InterlocutorUserId is not null && InterlocutorUserId == userId;
+
+    /// <summary>
+    /// Indica si la sesion espera todavia a un interlocutor humano.
+    /// </summary>
+    public bool IsAwaitingInterlocutor =>
+        Condition == ExperimentalCondition.Human && InterlocutorUserId is null && !IsTerminal;
+
     public bool IsTerminal => Status is ExperimentSessionStatus.Completed or ExperimentSessionStatus.TimedOut or ExperimentSessionStatus.Cancelled;
 
     private void EnsureActive()

@@ -26,6 +26,9 @@ builder.Services.AddCorsConfiguration(builder.Configuration);
 var startupLogger = new Serilog.Extensions.Logging.SerilogLoggerFactory(Log.Logger).CreateLogger("Turning.API.Jwt");
 builder.Services.AddJwtAuthentication(builder.Configuration, builder.Environment, startupLogger);
 
+var aiLogger = new Serilog.Extensions.Logging.SerilogLoggerFactory(Log.Logger).CreateLogger("Turning.API.Ai");
+builder.Services.AddAiTextGeneration(builder.Configuration, builder.Environment, aiLogger);
+
 builder.Services.AddAuthorization();
 
 // Agregar controllers y Swagger
