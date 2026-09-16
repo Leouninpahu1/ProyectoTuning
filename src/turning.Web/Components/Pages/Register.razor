@@ -1,85 +1,116 @@
 @page "/register"
+@layout EmptyLayout
 
 @inject AuthApiClient AuthApiClient
 @inject NavigationManager NavigationManager
 @inject TokenAuthenticationStateProvider AuthStateProvider
 
-<PageTitle>Registro</PageTitle>
+<PageTitle>SUE — Crear cuenta</PageTitle>
 
-<section class="auth-shell">
-    <article class="auth-panel">
-        <p class="eyebrow">Registro</p>
-        <h1>Crea una cuenta y entra al recorrido autenticado.</h1>
-        <p class="hero-copy">
-            El registro crea el usuario en base de datos, inicia sesion con el JWT devuelto por la API y deja
-            preparado el estado local de Blazor para navegar sin refrescos manuales.
-        </p>
+<div class="login-container">
+    <!-- Mitad Izquierda: Formulario -->
+    <div class="login-left paper">
+        <div class="login-card rise-in">
+            <div class="sue-logo">
+                <div class="sue-logo-icon">◦</div>
+                <h1 class="sue-logo-text">SUE</h1>
+                <p class="sue-logo-subtitle">Sistema de Usuario con Empatía</p>
+                <p style="margin-top: 8px; font-size: 14px; color: var(--barro-claro);">
+                    Comienza tu historia personal
+                </p>
+            </div>
 
-        <div class="feature-grid">
-            <article class="info-card">
-                <span class="card-tag">Dominio</span>
-                <h2>Cuenta persistida</h2>
-                <p>El alta va directo al endpoint de registro ya implementado en la API y respeta la capa backend existente.</p>
-            </article>
+            @if (!string.IsNullOrWhiteSpace(_errorMessage))
+            {
+                <div class="card-tierra" style="background: #FDECEC; border-color: #E8B4B4; margin-bottom: 16px; padding: 16px;">
+                    <p style="margin: 0; color: #8B4A4A; font-size: 14px;">@_errorMessage</p>
+                </div>
+            }
 
-            <article class="info-card">
-                <span class="card-tag">Seguridad</span>
-                <h2>Navegacion interna segura</h2>
-                <p>El retorno despues del alta solo acepta rutas internas para evitar redirecciones externas no deseadas.</p>
-            </article>
+            <EditForm FormName="register-form" Model="_model" OnValidSubmit="HandleSubmitAsync">
+                <DataAnnotationsValidator />
+
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 700; font-size: 14px;">
+                        Nombre completo
+                    </label>
+                    <InputText class="input-tierra" @bind-Value="_model.FullName" 
+                               placeholder="Tu nombre" autocomplete="name" />
+                    <ValidationMessage For="@(() => _model.FullName)" 
+                                       style="color: #A87B64; font-size: 13px; margin-top: 4px; display: block;" />
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 700; font-size: 14px;">
+                        Correo electrónico
+                    </label>
+                    <InputText class="input-tierra" @bind-Value="_model.Email" 
+                               placeholder="tu@email.com" autocomplete="username" />
+                    <ValidationMessage For="@(() => _model.Email)" 
+                                       style="color: #A87B64; font-size: 13px; margin-top: 4px; display: block;" />
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 700; font-size: 14px;">
+                        Contraseña
+                    </label>
+                    <InputText class="input-tierra" @bind-Value="_model.Password" 
+                               type="password" placeholder="Al menos 6 caracteres" 
+                               autocomplete="new-password" />
+                    <ValidationMessage For="@(() => _model.Password)" 
+                                       style="color: #A87B64; font-size: 13px; margin-top: 4px; display: block;" />
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 700; font-size: 14px;">
+                        Confirmar contraseña
+                    </label>
+                    <InputText class="input-tierra" @bind-Value="_model.ConfirmPassword" 
+                               type="password" placeholder="Repite tu contraseña" 
+                               autocomplete="new-password" />
+                    <ValidationMessage For="@(() => _model.ConfirmPassword)" 
+                                       style="color: #A87B64; font-size: 13px; margin-top: 4px; display: block;" />
+                </div>
+
+                <button type="submit" class="btn-tierra" disabled="@_isSubmitting">
+                    @(_isSubmitting ? "◦ Creando tu historia..." : "◦ Comenzar mi viaje")
+                </button>
+            </EditForm>
+
+            <p style="text-align: center; margin-top: 24px; font-size: 14px; color: var(--barro-claro);">
+                ¿Ya tienes cuenta? 
+                <a href="@BuildLoginLink()" 
+                   style="color: var(--terracota-oscura); font-weight: 800; text-decoration: none;">
+                    Ir al inicio de sesión
+                </a>
+            </p>
+
+            <p style="text-align: center; margin-top: 32px; font-size: 12px; color: var(--barro-claro);">
+                © 2026 SUE · Conecta con tus emociones
+            </p>
         </div>
-    </article>
+    </div>
 
-    <article class="auth-form-card">
-        <div class="auth-card-header">
-            <p class="eyebrow">Nuevo acceso</p>
-            <h2>Registrar usuario</h2>
-            <p>El rol inicial queda fijado como Researcher para mantener el primer flujo simple y consistente.</p>
+    <!-- Mitad Derecha: Decorativa -->
+    <div class="login-right linen">
+        <div class="avatar-container">
+            <div style="text-align: center;">
+                <div class="avatar-circle breathe">
+                    <span class="avatar-letter">·</span>
+                </div>
+                <p style="margin-top: 32px; font-family: var(--font-display); 
+                          font-size: 34px; font-weight: 700; color: var(--barro); 
+                          line-height: 1.2; max-width: 420px;">
+                    Una manera más cálida de escucharte.
+                </p>
+                <p style="margin-top: 16px; color: var(--barro-claro); 
+                          max-width: 400px; line-height: 1.6;">
+                    SUE está diseñado como un espacio empático para la reflexión, la conversación y la conciencia emocional.
+                </p>
+            </div>
         </div>
-
-        @if (!string.IsNullOrWhiteSpace(_errorMessage))
-        {
-            <div class="auth-alert auth-alert-error">@_errorMessage</div>
-        }
-
-        <EditForm FormName="register-form" Model="_model" OnValidSubmit="HandleSubmitAsync" class="auth-form">
-            <DataAnnotationsValidator />
-
-            <div class="form-field">
-                <label class="form-label" for="register-fullname">Nombre completo</label>
-                <InputText id="register-fullname" class="form-input" @bind-Value="_model.FullName" autocomplete="name" />
-                <ValidationMessage For="@(() => _model.FullName)" />
-            </div>
-
-            <div class="form-field">
-                <label class="form-label" for="register-email">Correo</label>
-                <InputText id="register-email" class="form-input" @bind-Value="_model.Email" autocomplete="username" />
-                <ValidationMessage For="@(() => _model.Email)" />
-            </div>
-
-            <div class="form-field">
-                <label class="form-label" for="register-password">Contrasena</label>
-                <InputText id="register-password" class="form-input" @bind-Value="_model.Password" type="password" autocomplete="new-password" />
-                <ValidationMessage For="@(() => _model.Password)" />
-            </div>
-
-            <div class="form-field">
-                <label class="form-label" for="register-confirm-password">Confirmar contrasena</label>
-                <InputText id="register-confirm-password" class="form-input" @bind-Value="_model.ConfirmPassword" type="password" autocomplete="new-password" />
-                <ValidationMessage For="@(() => _model.ConfirmPassword)" />
-            </div>
-
-            <button class="hero-button hero-button-primary auth-submit" type="submit" disabled="@_isSubmitting">
-                @(_isSubmitting ? "Creando cuenta..." : "Crear cuenta")
-            </button>
-        </EditForm>
-
-        <p class="auth-link-line">
-            Ya tienes acceso? <a href="@BuildLoginLink()">Ir al login</a>
-        </p>
-        <p class="auth-footnote">Registro persistido · auto-login · retorno protegido</p>
-    </article>
-</section>
+    </div>
+</div>
 
 @code {
     [SupplyParameterFromQuery(Name = "returnUrl")]
@@ -144,15 +175,15 @@
         public string FullName { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "El correo es obligatorio.")]
-        [EmailAddress(ErrorMessage = "Debes escribir un correo valido.")]
+        [EmailAddress(ErrorMessage = "Debes escribir un correo válido.")]
         public string Email { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "La contrasena es obligatoria.")]
-        [MinLength(6, ErrorMessage = "La contrasena debe tener al menos 6 caracteres.")]
+        [Required(ErrorMessage = "La contraseña es obligatoria.")]
+        [MinLength(6, ErrorMessage = "La contraseña debe tener al menos 6 caracteres.")]
         public string Password { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Debes confirmar la contrasena.")]
-        [Compare(nameof(Password), ErrorMessage = "Las contrasenas no coinciden.")]
+        [Required(ErrorMessage = "Debes confirmar la contraseña.")]
+        [Compare(nameof(Password), ErrorMessage = "Las contraseñas no coinciden.")]
         public string ConfirmPassword { get; set; } = string.Empty;
     }
 }

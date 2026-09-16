@@ -44,3 +44,6 @@ CLAUDE.md
 *.db
 *.db-shm
 *.db-wal
+
+# Salida de graphify (herramienta local)
+graphify-out/

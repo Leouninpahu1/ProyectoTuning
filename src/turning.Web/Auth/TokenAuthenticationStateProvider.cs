@@ -12,6 +12,7 @@ public sealed class TokenAuthenticationStateProvider : AuthenticationStateProvid
     private readonly BrowserTokenStore _browserTokenStore;
     private readonly AuthSession _authSession;
     private readonly TaskCompletionSource<AuthenticationState> _initializationSource = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly SemaphoreSlim _initLock = new(1, 1);
 
     private AuthenticationState _currentState = AnonymousState;
     private bool _isInitialized;
@@ -22,38 +23,60 @@ public sealed class TokenAuthenticationStateProvider : AuthenticationStateProvid
         _authSession = authSession;
     }
 
-    public override Task<AuthenticationState> GetAuthenticationStateAsync()
+    public override async Task<AuthenticationState> GetAuthenticationStateAsync()
     {
-        return _isInitialized ? Task.FromResult(_currentState) : _initializationSource.Task;
+        Console.WriteLine($"[SUE-AUTH] GetAuthenticationStateAsync llamado. _isInitialized={_isInitialized}");
+        if (_isInitialized)
+        {
+            return _currentState;
+        }
+
+        await InitializeAsync();
+        Console.WriteLine($"[SUE-AUTH] Tras InitializeAsync. _isInitialized={_isInitialized}, IsAuthenticated={_currentState.User.Identity?.IsAuthenticated}");
+        return _currentState;
     }
 
     public async Task InitializeAsync()
     {
+        Console.WriteLine($"[SUE-AUTH] InitializeAsync llamado. _isInitialized={_isInitialized}");
         if (_isInitialized)
         {
             return;
         }
 
+        await _initLock.WaitAsync();
         try
         {
-            var accessToken = await _browserTokenStore.GetAsync();
-
-            if (string.IsNullOrWhiteSpace(accessToken) || IsTokenExpired(accessToken))
+            if (_isInitialized)
             {
-                await ClearPersistedTokenAsync();
-                SetAuthenticationState(AnonymousState, null);
                 return;
             }
 
-            SetAuthenticationState(CreateAuthenticationState(accessToken), accessToken);
+            try
+            {
+                var accessToken = await _browserTokenStore.GetAsync();
+
+                if (string.IsNullOrWhiteSpace(accessToken) || IsTokenExpired(accessToken))
+                {
+                    await ClearPersistedTokenAsync();
+                    SetAuthenticationState(AnonymousState, null);
+                    return;
+                }
+
+                SetAuthenticationState(CreateAuthenticationState(accessToken), accessToken);
+            }
+            catch (JSException)
+            {
+                SetAuthenticationState(AnonymousState, null);
+            }
+            catch (InvalidOperationException)
+            {
+                SetAuthenticationState(AnonymousState, null);
+            }
         }
-        catch (JSException)
+        finally
         {
-            SetAuthenticationState(AnonymousState, null);
-        }
-        catch (InvalidOperationException)
-        {
-            SetAuthenticationState(AnonymousState, null);
+            _initLock.Release();
         }
     }
 

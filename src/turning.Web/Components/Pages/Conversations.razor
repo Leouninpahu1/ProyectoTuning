@@ -1,0 +1,237 @@
+@page "/conversations"
+@attribute [Authorize]
+
+@using System.Net
+@using turning.Web.ExperimentSessions
+
+@inject ExperimentSessionApiClient ExperimentSessionApiClient
+@inject NavigationManager NavigationManager
+@inject TokenAuthenticationStateProvider AuthStateProvider
+
+<PageTitle>SUE — Conversaciones Emocionales</PageTitle>
+
+<div class="sue-page">
+    <header class="sue-header">
+        <p class="sue-eyebrow">· Conversaciones</p>
+        <h1 class="sue-title">Conversación Emocional</h1>
+        <p class="sue-subtitle">Un espacio cálido para conversar con SUE.</p>
+    </header>
+
+    @if (_isLoading)
+    {
+        <div class="sue-card">
+            <p class="sue-info-value">Cargando conversación...</p>
+        </div>
+    }
+    else if (!string.IsNullOrWhiteSpace(_errorMessage))
+    {
+        <div class="sue-card">
+            <p class="sue-info-value" style="color: #A87B64;">@_errorMessage</p>
+        </div>
+    }
+    else if (_session is null)
+    {
+        <div class="sue-card" style="text-align: center; padding: 60px 20px;">
+            <div style="font-size: 48px; margin-bottom: 16px;">·</div>
+            <h2 class="sue-card-title">Necesitas una sesión activa</h2>
+            <p class="sue-subtitle" style="margin-bottom: 24px;">
+                Crea una sesión primero para comenzar a conversar con SUE.
+            </p>
+            <button class="btn-tierra" style="max-width: 280px; margin: 0 auto;" @onclick="GoToWorkspace">
+                ◦ Crear sesión
+            </button>
+        </div>
+    }
+    else
+    {
+        <div class="sue-card" style="padding: 0; overflow: hidden;">
+            <!-- Encabezado del chat -->
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; border-bottom: 1px solid rgba(212, 184, 167, 0.3); flex-wrap: wrap; gap: 12px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div class="breathe" style="width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, var(--salvia), var(--arcilla)); display: flex; align-items: center; justify-content: center; font-size: 22px; color: white;">
+                        ◦
+                    </div>
+                    <div>
+                        <p style="margin: 0; font-weight: 800; color: var(--barro);">SUE</p>
+                        <p style="margin: 2px 0 0; font-size: 12px; color: var(--barro-claro); display: flex; align-items: center; gap: 6px;">
+                            <span class="pulse-dot" style="width: 8px; height: 8px; border-radius: 50%; background: var(--salvia-oscura); display: inline-block;"></span>
+                            Escuchando
+                        </p>
+                    </div>
+                </div>
+                @if (!string.IsNullOrWhiteSpace(_session.LastDetectedEmotion))
+                {
+                    <span style="padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: 800; background: rgba(181,196,177,0.4); color: var(--salvia-oscura);">
+                        @_session.LastDetectedEmotion
+                    </span>
+                }
+            </div>
+
+            <!-- Mensajes -->
+            <div class="sue-chat-feed" style="padding: 24px; min-height: 400px; max-height: 520px;">
+                @if (_turns.Count == 0)
+                {
+                    <div class="sue-chat-empty">
+                        Aún no hay mensajes. Escribe el primero para comenzar tu conversación con SUE.
+                    </div>
+                }
+                else
+                {
+                    @foreach (var turn in _turns)
+                    {
+                        <div class="@GetCss(turn)">
+                            <div class="sue-chat-meta">
+                                <span>@turn.Sender</span>
+                                <span>@turn.CreatedAtUtc.ToLocalTime().ToString("HH:mm")</span>
+                            </div>
+                            <p>@turn.Message</p>
+                        </div>
+                    }
+                    @if (_isSending)
+                    {
+                        <div class="sue-chat-bubble sue-chat-sue">
+                            <div class="sue-chat-meta">
+                                <span>SUE</span>
+                                <span>escribiendo...</span>
+                            </div>
+                            <p>● ● ●</p>
+                        </div>
+                    }
+                }
+            </div>
+
+            <!-- Input -->
+            <div style="padding: 20px 24px; border-top: 1px solid rgba(212, 184, 167, 0.3); background: var(--blanco-roto);">
+                <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;">
+                    <button class="btn-ghost" style="padding: 6px 14px; font-size: 12px;" @onclick='() => UseSuggestion("¿Cómo me siento hoy?")'>
+                        ¿Cómo me siento hoy?
+                    </button>
+                    <button class="btn-ghost" style="padding: 6px 14px; font-size: 12px;" @onclick='() => UseSuggestion("Cuéntame algo que me hizo feliz.")'>
+                        Algo que me hizo feliz
+                    </button>
+                    <button class="btn-ghost" style="padding: 6px 14px; font-size: 12px;" @onclick='() => UseSuggestion("¿Qué emoción está más presente en mí?")'>
+                        ¿Qué emoción está presente?
+                    </button>
+                </div>
+
+                <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                    <textarea class="input-tierra" rows="2" placeholder="¿Qué hay en tu corazón hoy?"
+                              style="flex: 1; min-width: 200px; resize: none;"
+                              @bind="_draftMessage"
+                              @bind:event="oninput"
+                              disabled="@_isSending"></textarea>
+                    <button class="btn-tierra" style="width: auto; padding: 12px 28px; align-self: flex-end;"
+                            @onclick="SendAsync" disabled="@_isSending">
+                        @(_isSending ? "..." : "· Enviar")
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private ExperimentSessionSnapshotDto? _session;
+    private List<ConversationTurnSnapshotDto> _turns = new();
+    private bool _isLoading = true;
+    private bool _isSending;
+    private string? _errorMessage;
+    private string _draftMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            _session = await ExperimentSessionApiClient.GetLatestAsync();
+
+            if (_session is not null)
+            {
+                var turns = await ExperimentSessionApiClient.GetConversationTurnsAsync(_session.Id);
+                _turns = new List<ConversationTurnSnapshotDto>(turns);
+            }
+        }
+        catch (ApiException exception) when (exception.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            await AuthStateProvider.SignOutAsync();
+            NavigationManager.NavigateTo("/login?returnUrl=%2Fconversations", replace: true);
+        }
+        catch (ApiException exception)
+        {
+            _errorMessage = exception.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task SendAsync()
+    {
+        if (_session is null || string.IsNullOrWhiteSpace(_draftMessage))
+        {
+            return;
+        }
+
+        _isSending = true;
+        _errorMessage = null;
+
+        try
+        {
+            var isAi = string.Equals(_session.Condition, "AI", StringComparison.OrdinalIgnoreCase);
+
+            await ExperimentSessionApiClient.AddConversationTurnAsync(_session.Id, new AddConversationTurnRequestDto
+            {
+                Sender = "Participant",
+                Message = _draftMessage.Trim()
+            });
+
+            _draftMessage = string.Empty;
+            await LoadAsync();
+
+            if (isAi && _turns.Count > 0)
+            {
+                // Refresca tras la respuesta automática del interlocutor
+                await Task.Delay(600);
+                await LoadAsync();
+            }
+        }
+        catch (ApiException exception) when (exception.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            await AuthStateProvider.SignOutAsync();
+            NavigationManager.NavigateTo("/login?returnUrl=%2Fconversations", replace: true);
+        }
+        catch (ApiException exception)
+        {
+            _errorMessage = exception.Message;
+        }
+        finally
+        {
+            _isSending = false;
+        }
+    }
+
+    private void UseSuggestion(string text)
+    {
+        _draftMessage = text;
+    }
+
+    private void GoToWorkspace()
+    {
+        NavigationManager.NavigateTo("/workspace");
+    }
+
+    private static string GetCss(ConversationTurnSnapshotDto turn)
+    {
+        return string.Equals(turn.Sender, "Interlocutor", StringComparison.OrdinalIgnoreCase)
+            ? "sue-chat-bubble sue-chat-sue"
+            : "sue-chat-bubble sue-chat-user";
+    }
+}

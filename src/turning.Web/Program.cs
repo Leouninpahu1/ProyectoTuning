@@ -9,6 +9,13 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddAuthorizationCore();
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultScheme = "BlazorServer";
+    options.DefaultAuthenticateScheme = "BlazorServer";
+    options.DefaultChallengeScheme = "BlazorServer";
+})
+.AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, BlazorServerAuthHandler>("BlazorServer", _ => { });
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<AuthSession>();
 builder.Services.AddScoped<BrowserTokenStore>();
@@ -50,4 +57,24 @@ app.Run();
 static string EnsureTrailingSlash(string value)
 {
     return value.EndsWith("/", StringComparison.Ordinal) ? value : $"{value}/";
+}
+internal sealed class BlazorServerAuthHandler : Microsoft.AspNetCore.Authentication.AuthenticationHandler<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions>
+{
+    public BlazorServerAuthHandler(
+        Microsoft.Extensions.Options.IOptionsMonitor<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions> options,
+        Microsoft.Extensions.Logging.ILoggerFactory logger,
+        System.Text.Encodings.Web.UrlEncoder encoder)
+        : base(options, logger, encoder) { }
+
+    // No autentica nada aquí: Blazor lo hace en el circuito
+    protected override Task<Microsoft.AspNetCore.Authentication.AuthenticateResult> HandleAuthenticateAsync()
+        => Task.FromResult(Microsoft.AspNetCore.Authentication.AuthenticateResult.NoResult());
+
+    // No redirige: Blazor maneja el redirect vía RedirectToLogin
+    protected override Task HandleChallengeAsync(Microsoft.AspNetCore.Authentication.AuthenticationProperties properties)
+        => Task.CompletedTask;
+
+    // No prohíbe: Blazor maneja el 403
+    protected override Task HandleForbiddenAsync(Microsoft.AspNetCore.Authentication.AuthenticationProperties properties)
+        => Task.CompletedTask;
 }

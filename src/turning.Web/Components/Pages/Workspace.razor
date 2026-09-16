@@ -10,222 +10,226 @@
 @inject NavigationManager NavigationManager
 @inject TokenAuthenticationStateProvider AuthStateProvider
 
-<PageTitle>Panel protegido</PageTitle>
+<PageTitle>SUE — Panel</PageTitle>
 
-<section class="session-panel">
-    <p class="eyebrow">Sesion protegida</p>
-    <h1>Panel autenticado listo para sesion y conversacion.</h1>
-    <p class="hero-copy">
-        Esta vista confirma que el JWT persistido se reconstruyo correctamente, que la ruta esta protegida y que
-        el frontend ya puede crear una sesion experimental real en la API y consumir una conversacion persistida sobre esa misma base.
-    </p>
-</section>
-
-@if (_isLoading)
-{
-    <section class="route-guard">
-        <p class="eyebrow">Perfil</p>
-        <h1>Cargando sesion actual.</h1>
-        <p class="hero-copy">Consultando el perfil, la ultima sesion experimental y su conversacion persistida.</p>
-    </section>
-}
-else if (!string.IsNullOrWhiteSpace(_errorMessage))
-{
-    <section class="route-guard">
-        <p class="eyebrow">Sesion</p>
-        <h1>No fue posible cargar el panel.</h1>
-        <p class="hero-copy">@_errorMessage</p>
-        <div class="hero-actions">
-            <button class="hero-button hero-button-primary auth-submit" @onclick="LoadWorkspaceAsync">Reintentar</button>
+<div class="sue-page">
+    @if (_isLoading)
+    {
+        <div class="sue-loading">
+            <p class="sue-eyebrow">Perfil</p>
+            <h1 class="sue-title">Cargando tu espacio...</h1>
+            <p class="sue-subtitle">Consultando tu perfil y sesiones recientes.</p>
         </div>
-    </section>
-}
-else if (_user is not null)
-{
-    <section class="session-grid">
-        <article class="session-card">
-            <span class="card-tag">Usuario</span>
-            <h2>Nombre visible</h2>
-            <span class="session-value">@_user.FullName</span>
-        </article>
-
-        <article class="session-card">
-            <span class="card-tag">Contacto</span>
-            <h2>Correo autenticado</h2>
-            <span class="session-value">@_user.Email</span>
-        </article>
-
-        <article class="session-card">
-            <span class="card-tag">Rol</span>
-            <h2>Permiso actual</h2>
-            <span class="session-value">@_user.Role</span>
-        </article>
-
-        <article class="session-card">
-            <span class="card-tag">Token</span>
-            <h2>Expiracion estimada</h2>
-            <span class="session-value">@_tokenExpiryLabel</span>
-        </article>
-    </section>
-
-    @if (_session is null)
-    {
-        <section class="session-panel">
-            <p class="eyebrow">Session bootstrap</p>
-            <h2>Crear la primera sesion experimental.</h2>
-            <p class="hero-copy">
-                Esta operacion crea una sesion persistida en la API y deja una base real para registrar turnos conversacionales,
-                lecturas emocionales y estado inicial del avatar.
-            </p>
-
-            <div class="form-field">
-                <label class="form-label" for="preferred-condition">Condicion experimental</label>
-                <InputSelect id="preferred-condition" class="form-input" @bind-Value="_preferredCondition">
-                    <option value="AI">AI</option>
-                    <option value="Human">Human</option>
-                </InputSelect>
-            </div>
-
-            <div class="hero-actions">
-                <button class="hero-button hero-button-primary auth-submit" @onclick="HandleCreateSessionAsync" disabled="@_isCreatingSession">
-                    @(_isCreatingSession ? "Creando sesion..." : "Crear sesion experimental")
-                </button>
-            </div>
-
-            <p class="auth-footnote">Bootstrap real · sesion persistida · base lista para siguientes modulos</p>
-        </section>
     }
-    else
+    else if (!string.IsNullOrWhiteSpace(_errorMessage))
     {
-        <section class="session-panel">
-            <p class="eyebrow">Sesion experimental</p>
-            <h2>Sesion activa para continuar el MVP.</h2>
-            <p class="hero-copy">
-                La sesion ya existe en persistencia y ahora puede servir como ancla para registrar mensajes,
-                emociones detectadas y transiciones visuales del avatar sobre un contexto comun.
-            </p>
+        <div class="sue-loading">
+            <p class="sue-eyebrow">Error</p>
+            <h1 class="sue-title">No fue posible cargar el panel.</h1>
+            <p class="sue-subtitle">@_errorMessage</p>
+            <button class="btn-tierra" style="max-width: 240px; margin-top: 20px;" @onclick="LoadWorkspaceAsync">
+                Reintentar
+            </button>
+        </div>
+    }
+    else if (_user is not null)
+    {
+        <!-- Header bienvenida -->
+        <header class="sue-header">
+            
+            <h1 class="sue-title">Hola, @GetFirstName()</h1>
+            <p class="sue-subtitle">Hoy es un buen día para conectar contigo mismo.</p>
+        </header>
 
-            <div class="hero-actions">
-                <button class="hero-button hero-button-secondary" @onclick="HandleCreateSessionAsync" disabled="@_isCreatingSession">
-                    @(_isCreatingSession ? "Creando nueva sesion..." : "Crear una nueva sesion")
-                </button>
-            </div>
-        </section>
-
-        <section class="session-grid">
-            <article class="session-card">
-                <span class="card-tag">Sesion</span>
-                <h2>Codigo</h2>
-                <span class="session-value">@_session.SessionCode</span>
-            </article>
-
-            <article class="session-card">
-                <span class="card-tag">Condicion</span>
-                <h2>Asignacion inicial</h2>
-                <span class="session-value">@_session.Condition</span>
-            </article>
-
-            <article class="session-card">
-                <span class="card-tag">Estado</span>
-                <h2>Ciclo de vida</h2>
-                <span class="session-value">@_session.Status</span>
-            </article>
-
-            <article class="session-card">
-                <span class="card-tag">Avatar</span>
-                <h2>Estado base</h2>
-                <span class="session-value">@_session.AvatarState</span>
-            </article>
-
-            <article class="session-card">
-                <span class="card-tag">Conversacion</span>
-                <h2>Primer paso</h2>
-                <span class="session-value">@_session.ConversationStage</span>
-                <p>Turnos registrados: @_session.ConversationTurnCount</p>
-            </article>
-
-            <article class="session-card">
-                <span class="card-tag">Emociones</span>
-                <h2>Pipeline actual</h2>
-                <span class="session-value">@_session.EmotionStage</span>
-                <p>Muestras registradas: @_session.EmotionSampleCount</p>
-            </article>
-
-            <article class="session-card">
-                <span class="card-tag">Avatar readiness</span>
-                <h2>Siguiente modulo</h2>
-                <span class="session-value">@_session.AvatarStage</span>
-            </article>
-
-            <article class="session-card">
-                <span class="card-tag">Creacion</span>
-                <h2>Fecha base</h2>
-                <span class="session-value">@_session.CreatedAtUtc.ToLocalTime().ToString("g")</span>
-            </article>
-        </section>
-
-        <section class="session-panel conversation-shell">
-            <p class="eyebrow">Conversation orchestration</p>
-            <h2>Bloque inicial de chat sobre la sesion real.</h2>
-            <p class="hero-copy">
-                Esta superficie consume los turnos persistidos de la sesion y permite agregar nuevos mensajes para dejar lista la base
-                sobre la que luego se montaran intervencion de IA, analisis emocional y expresion del avatar.
-            </p>
-
-            @if (IsAiCondition)
-            {
-                <p class="auth-footnote">Sesion AI activa · cada mensaje del participante dispara una respuesta automatica del interlocutor</p>
-            }
-
-            <div class="conversation-feed">
-                @if (_conversationTurns.Count == 0)
-                {
-                    <div class="conversation-empty">
-                        No hay mensajes todavia. Agrega el primer turno para activar la conversacion persistida.
-                    </div>
-                }
-                else
-                {
-                    @foreach (var turn in _conversationTurns)
-                    {
-                        <article class="@GetConversationTurnCss(turn)">
-                            <div class="conversation-meta">
-                                <span>@turn.Sender</span>
-                                <span>Turno @turn.SequenceNumber.ToString("00")</span>
-                                <span>@turn.CreatedAtUtc.ToLocalTime().ToString("HH:mm")</span>
-                            </div>
-                            <p>@turn.Message</p>
-                        </article>
-                    }
-                }
+        <!-- Grid principal -->
+        <div class="sue-grid-main">
+            <!-- Stats -->
+            <div class="sue-stats-grid">
+                <div class="sue-stat-card">
+                    <div class="sue-stat-icon">◦</div>
+                    <p class="sue-stat-value">@(_session is not null ? "1" : "0")</p>
+                    <p class="sue-stat-label">Sesión activa</p>
+                </div>
+                <div class="sue-stat-card">
+                    <div class="sue-stat-icon">·</div>
+                    <p class="sue-stat-value">@_conversationTurns.Count</p>
+                    <p class="sue-stat-label">Mensajes</p>
+                </div>
+                <div class="sue-stat-card">
+                    <div class="sue-stat-icon">◇</div>
+                    <p class="sue-stat-value">@(_session?.EmotionSampleCount ?? 0)</p>
+                    <p class="sue-stat-label">Emociones</p>
+                </div>
+                <div class="sue-stat-card">
+                    <div class="sue-stat-icon">○</div>
+                    <p class="sue-stat-value">@(_session?.ConversationTurnCount ?? 0)</p>
+                    <p class="sue-stat-label">Turnos</p>
+                </div>
             </div>
 
-            <div class="auth-form">
-                @if (!IsAiCondition)
-                {
-                    <div class="form-field">
-                        <label class="form-label" for="conversation-sender">Emisor</label>
-                        <InputSelect id="conversation-sender" class="form-input" @bind-Value="_conversationSender">
-                            <option value="Participant">Participant</option>
-                            <option value="Interlocutor">Interlocutor</option>
-                        </InputSelect>
-                    </div>
-                }
+            <!-- Card de frase SUE -->
+            <div class="sue-quote-card">
+                <p class="sue-quote-label">SUE dice</p>
+                <p class="sue-quote-text">Cada emoción tiene su lugar en tu jardín interior.</p>
+                <span class="sue-quote-icon">◦</span>
+            </div>
+        </div>
 
-                <div class="form-field">
-                    <label class="form-label" for="conversation-message">Mensaje</label>
-                    <textarea id="conversation-message" class="form-input form-textarea" @bind="_draftMessage"></textarea>
+        <!-- Perfil -->
+        <div class="sue-card">
+            <h2 class="sue-card-title">Tu perfil</h2>
+            <div class="sue-info-grid">
+                <div>
+                    <p class="sue-info-label">Nombre</p>
+                    <p class="sue-info-value">@_user.FullName</p>
+                </div>
+                <div>
+                    <p class="sue-info-label">Correo</p>
+                    <p class="sue-info-value">@_user.Email</p>
+                </div>
+                <div>
+                    <p class="sue-info-label">Rol</p>
+                    <p class="sue-info-value">@_user.Role</p>
+                </div>
+                <div>
+                    <p class="sue-info-label">Sesión expira</p>
+                    <p class="sue-info-value">@_tokenExpiryLabel</p>
+                </div>
+            </div>
+        </div>
+
+        @if (_session is null)
+        {
+            <div class="sue-card">
+                <p class="sue-eyebrow">Primera sesión</p>
+                <h2 class="sue-card-title">Crear tu primera sesión experimental</h2>
+                <p class="sue-subtitle" style="margin-bottom: 20px;">
+                    Esto crea una sesión persistida que servirá como base para conversaciones, emociones y el avatar.
+                </p>
+
+                <div class="sue-form-field">
+                    <label class="sue-form-label">Condición experimental</label>
+                    <select class="input-tierra" @bind="_preferredCondition">
+                        <option value="AI">IA</option>
+                        <option value="Human">Humano</option>
+                    </select>
                 </div>
 
-                <div class="hero-actions">
-                    <button class="hero-button hero-button-primary auth-submit" @onclick="HandleAddConversationTurnAsync" disabled="@_isSubmittingTurn">
-                        @(_isSubmittingTurn ? "Guardando mensaje..." : "Agregar mensaje")
+                <button class="btn-tierra" style="max-width: 320px; margin-top: 16px;"
+                        @onclick="HandleCreateSessionAsync" disabled="@_isCreatingSession">
+                    @(_isCreatingSession ? "Creando sesión..." : "◦ Crear sesión")
+                </button>
+            </div>
+        }
+        else
+        {
+            <!-- Info sesión -->
+            <div class="sue-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+                    <h2 class="sue-card-title" style="margin: 0;">Sesión activa</h2>
+                    <button class="btn-ghost" style="width: auto; padding: 10px 20px;" 
+                            @onclick="HandleCreateSessionAsync" disabled="@_isCreatingSession">
+                        @(_isCreatingSession ? "Creando..." : "Nueva sesión")
+                    </button>
+                </div>
+
+                <div class="sue-info-grid">
+                    <div>
+                        <p class="sue-info-label">Código</p>
+                        <p class="sue-info-value">@_session.SessionCode</p>
+                    </div>
+                    <div>
+                        <p class="sue-info-label">Condición</p>
+                        <p class="sue-info-value">@_session.Condition</p>
+                    </div>
+                    <div>
+                        <p class="sue-info-label">Estado</p>
+                        <p class="sue-info-value">@_session.Status</p>
+                    </div>
+                    <div>
+                        <p class="sue-info-label">Avatar</p>
+                        <p class="sue-info-value">@_session.AvatarState</p>
+                    </div>
+                    <div>
+                        <p class="sue-info-label">Conversación</p>
+                        <p class="sue-info-value">@_session.ConversationStage</p>
+                    </div>
+                    <div>
+                        <p class="sue-info-label">Emociones</p>
+                        <p class="sue-info-value">@_session.EmotionStage</p>
+                    </div>
+                    <div>
+                        <p class="sue-info-label">Creada</p>
+                        <p class="sue-info-value">@_session.CreatedAtUtc.ToLocalTime().ToString("g")</p>
+                    </div>
+                    <div>
+                        <p class="sue-info-label">Siguiente paso</p>
+                        <p class="sue-info-value">@_session.AvatarStage</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat -->
+            <div class="sue-card">
+                <p class="sue-eyebrow">Conversación</p>
+                <h2 class="sue-card-title" style="margin-bottom: 20px;">Habla con SUE</h2>
+
+                @if (IsAiCondition)
+                {
+                    <p class="sue-info-label" style="margin-bottom: 16px;">
+                        Sesión IA activa · cada mensaje tuyo genera una respuesta automática.
+                    </p>
+                }
+
+                <div class="sue-chat-feed">
+                    @if (_conversationTurns.Count == 0)
+                    {
+                        <div class="sue-chat-empty">
+                            Aún no hay mensajes. Escribe el primero para comenzar.
+                        </div>
+                    }
+                    else
+                    {
+                        @foreach (var turn in _conversationTurns)
+                        {
+                            <div class="@GetConversationTurnCss(turn)">
+                                <div class="sue-chat-meta">
+                                    <span>@turn.Sender</span>
+                                    <span>@turn.CreatedAtUtc.ToLocalTime().ToString("HH:mm")</span>
+                                </div>
+                                <p>@turn.Message</p>
+                            </div>
+                        }
+                    }
+                </div>
+
+                <div style="margin-top: 20px;">
+                    @if (!IsAiCondition)
+                    {
+                        <div class="sue-form-field">
+                            <label class="sue-form-label">Emisor</label>
+                            <select class="input-tierra" @bind="_conversationSender">
+                                <option value="Participant">Participante</option>
+                                <option value="Interlocutor">Interlocutor</option>
+                            </select>
+                        </div>
+                    }
+
+                    <div class="sue-form-field">
+                        <label class="sue-form-label">Mensaje</label>
+                        <textarea class="input-tierra" rows="3" placeholder="¿Qué hay en tu corazón hoy?"
+                                  @bind="_draftMessage"></textarea>
+                    </div>
+
+                    <button class="btn-tierra" style="margin-top: 12px;"
+                            @onclick="HandleAddConversationTurnAsync" disabled="@_isSubmittingTurn">
+                        @(_isSubmittingTurn ? "Guardando..." : "· Enviar mensaje")
                     </button>
                 </div>
             </div>
-        </section>
+        }
     }
-}
+</div>
 
 @code {
     private AuthenticatedUserDto? _user;
@@ -243,6 +247,12 @@ else if (_user is not null)
     protected override async Task OnInitializedAsync()
     {
         await LoadWorkspaceAsync();
+    }
+
+    private string GetFirstName()
+    {
+        if (string.IsNullOrWhiteSpace(_user?.FullName)) return "amigo";
+        return _user.FullName.Split(' ')[0];
     }
 
     private async Task LoadWorkspaceAsync()
@@ -358,8 +368,8 @@ else if (_user is not null)
     private static string GetConversationTurnCss(ConversationTurnSnapshotDto turn)
     {
         return string.Equals(turn.Sender, "Interlocutor", StringComparison.OrdinalIgnoreCase)
-            ? "conversation-turn conversation-turn-interlocutor"
-            : "conversation-turn conversation-turn-participant";
+            ? "sue-chat-bubble sue-chat-sue"
+            : "sue-chat-bubble sue-chat-user";
     }
 
     private bool IsAiCondition => string.Equals(_session?.Condition, "AI", StringComparison.OrdinalIgnoreCase);

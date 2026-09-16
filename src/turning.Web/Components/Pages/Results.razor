@@ -1,0 +1,180 @@
+@page "/results"
+@attribute [Authorize]
+
+@using System.Net
+@using turning.Web.ExperimentSessions
+
+@inject ExperimentSessionApiClient ExperimentSessionApiClient
+@inject NavigationManager NavigationManager
+@inject TokenAuthenticationStateProvider AuthStateProvider
+@inject IJSRuntime JS
+
+<PageTitle>SUE — Resultados y Análisis</PageTitle>
+
+<div class="sue-page">
+    <header class="sue-header">
+        <p class="sue-eyebrow">▤ Insights</p>
+        <h1 class="sue-title">Resultados y Análisis</h1>
+        <p class="sue-subtitle">Un resumen visual de tu viaje emocional.</p>
+    </header>
+
+    @if (_isLoading)
+    {
+        <div class="sue-card">
+            <p class="sue-info-value">Cargando análisis...</p>
+        </div>
+    }
+    else if (!string.IsNullOrWhiteSpace(_errorMessage))
+    {
+        <div class="sue-card">
+            <p class="sue-info-value" style="color: #A87B64;">@_errorMessage</p>
+        </div>
+    }
+    else
+    {
+        <!-- Stat cards -->
+        <div class="sue-stats-grid">
+            <div class="sue-stat-card">
+                <div class="sue-stat-icon">◦</div>
+                <p class="sue-stat-value">@(_session is not null ? "1" : "0")</p>
+                <p class="sue-stat-label">Sesiones totales</p>
+            </div>
+            <div class="sue-stat-card">
+                <div class="sue-stat-icon">◌</div>
+                <p class="sue-stat-value">78%</p>
+                <p class="sue-stat-label">Bienestar promedio</p>
+            </div>
+            <div class="sue-stat-card">
+                <div class="sue-stat-icon">◇</div>
+                <p class="sue-stat-value">@(_session?.LastDetectedEmotion ?? "Calma")</p>
+                <p class="sue-stat-label">Emoción top</p>
+            </div>
+            <div class="sue-stat-card">
+                <div class="sue-stat-icon">○</div>
+                <p class="sue-stat-value">84%</p>
+                <p class="sue-stat-label">Conexión</p>
+            </div>
+        </div>
+
+        <!-- Gráficos -->
+        <div class="sue-two-cols">
+            <div class="sue-card">
+                <h2 class="sue-card-title">Emociones de la semana</h2>
+                <div style="margin-top: 20px; height: 300px;">
+                    <canvas id="resultsBar"></canvas>
+                </div>
+            </div>
+
+            <div class="sue-card">
+                <h2 class="sue-card-title">Sesión reciente</h2>
+
+                @if (_session is null)
+                {
+                    <p class="sue-subtitle" style="margin-top: 16px;">
+                        Aún no tienes sesiones registradas.
+                    </p>
+                }
+                else
+                {
+                    <div style="margin-top: 16px; overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                            <thead>
+                                <tr style="border-bottom: 1px solid rgba(212, 184, 167, 0.4); color: var(--barro-claro); text-align: left;">
+                                    <th style="padding: 12px 8px;">Sesión</th>
+                                    <th style="padding: 12px 8px;">Fecha</th>
+                                    <th style="padding: 12px 8px;">Emoción</th>
+                                    <th style="padding: 12px 8px;">Mensajes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr style="border-bottom: 1px solid rgba(212, 184, 167, 0.2);">
+                                    <td style="padding: 12px 8px; font-weight: 700;">@_session.SessionCode</td>
+                                    <td style="padding: 12px 8px;">@_session.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy")</td>
+                                    <td style="padding: 12px 8px;">@(_session.LastDetectedEmotion ?? "—")</td>
+                                    <td style="padding: 12px 8px;">@_session.ConversationTurnCount</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                }
+
+                <button class="btn-ghost" style="margin-top: 20px; width: auto; padding: 12px 24px;"
+                        @onclick="ExportReportAsync">
+                    ▤ Exportar reporte
+                </button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private ExperimentSessionSnapshotDto? _session;
+    private bool _isLoading = true;
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !_isLoading && string.IsNullOrWhiteSpace(_errorMessage))
+        {
+            await DrawBarAsync();
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            _session = await ExperimentSessionApiClient.GetLatestAsync();
+        }
+        catch (ApiException exception) when (exception.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            await AuthStateProvider.SignOutAsync();
+            NavigationManager.NavigateTo("/login?returnUrl=%2Fresults", replace: true);
+        }
+        catch (ApiException exception)
+        {
+            _errorMessage = exception.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task DrawBarAsync()
+    {
+        var data = new
+        {
+            labels = new[] { "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom" },
+            values = new[] { 62, 71, 68, 79, 74, 84, 78 },
+            colors = new[] { "#E8C9A0", "#B5C4B1", "#D4B8A7", "#C4957A", "#D5C4D4", "#8FA38A", "#A87B64" }
+        };
+
+        await JS.InvokeVoidAsync("sueDrawBar", "resultsBar", data);
+    }
+
+    private async Task ExportReportAsync()
+    {
+        var report = new
+        {
+            app = "SUE — Sistema de Usuario con Empatía",
+            generated = DateTime.UtcNow.ToString("o"),
+            session = _session
+        };
+
+        var json = System.Text.Json.JsonSerializer.Serialize(report, new System.Text.Json.JsonSerializerOptions
+        {
+            WriteIndented = true
+        });
+
+        await JS.InvokeVoidAsync("sueDownloadJson", "sue-report.json", json);
+    }
+}

@@ -1,73 +1,102 @@
 @page "/login"
+@layout EmptyLayout
 
 @inject AuthApiClient AuthApiClient
 @inject NavigationManager NavigationManager
 @inject TokenAuthenticationStateProvider AuthStateProvider
 
-<PageTitle>Login</PageTitle>
+<PageTitle>SUE — Iniciar sesión</PageTitle>
 
-<section class="auth-shell">
-    <article class="auth-panel">
-        <p class="eyebrow">Acceso</p>
-        <h1>Inicia sesion para abrir el frontend protegido.</h1>
-        <p class="hero-copy">
-            El login usa la API existente, persiste el JWT en el navegador y reconstruye la sesion cuando el
-            usuario vuelve a entrar a la aplicacion.
-        </p>
-
-        <div class="feature-grid">
-            <article class="info-card">
-                <span class="card-tag">UX</span>
-                <h2>Errores visibles</h2>
-                <p>Las respuestas de autenticacion fallida se muestran en la misma pantalla, sin dejar al usuario sin contexto.</p>
-            </article>
-
-            <article class="info-card">
-                <span class="card-tag">Sesion</span>
-                <h2>Persistencia del token</h2>
-                <p>Si el JWT sigue vigente, el estado de sesion se restaura automaticamente desde el almacenamiento del navegador.</p>
-            </article>
-        </div>
-    </article>
-
-    <article class="auth-form-card">
-        <div class="auth-card-header">
-            <p class="eyebrow">Login</p>
-            <h2>Entrar a Turning</h2>
-            <p>Usa el usuario registrado en la base de datos para acceder al panel protegido y a la zona Unity.</p>
-        </div>
-
-        @if (!string.IsNullOrWhiteSpace(_errorMessage))
-        {
-            <div class="auth-alert auth-alert-error">@_errorMessage</div>
-        }
-
-        <EditForm FormName="login-form" Model="_model" OnValidSubmit="HandleSubmitAsync" class="auth-form">
-            <DataAnnotationsValidator />
-
-            <div class="form-field">
-                <label class="form-label" for="login-email">Correo</label>
-                <InputText id="login-email" class="form-input" @bind-Value="_model.Email" autocomplete="username" />
-                <ValidationMessage For="@(() => _model.Email)" />
+<div class="login-container">
+    <!-- Mitad Izquierda: Formulario -->
+    <div class="login-left paper">
+        <div class="login-card rise-in">
+            <div class="sue-logo">
+                <div class="sue-logo-icon">◦</div>
+                <h1 class="sue-logo-text">SUE</h1>
+                <p class="sue-logo-subtitle">Sistema de Usuario con Empatía</p>
+                <p style="margin-top: 8px; font-size: 14px; color: var(--barro-claro);">
+                    Tu espacio para conectar con tus emociones
+                </p>
             </div>
 
-            <div class="form-field">
-                <label class="form-label" for="login-password">Contrasena</label>
-                <InputText id="login-password" class="form-input" @bind-Value="_model.Password" type="password" autocomplete="current-password" />
-                <ValidationMessage For="@(() => _model.Password)" />
+            @if (!string.IsNullOrWhiteSpace(_errorMessage))
+            {
+                <div class="card-tierra" style="background: #FDECEC; border-color: #E8B4B4; margin-bottom: 16px; padding: 16px;">
+                    <p style="margin: 0; color: #8B4A4A; font-size: 14px;">@_errorMessage</p>
+                </div>
+            }
+
+            <EditForm FormName="login-form" Model="_model" OnValidSubmit="HandleSubmitAsync">
+                <DataAnnotationsValidator />
+
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 700; font-size: 14px;">
+                        Correo electrónico
+                    </label>
+                    <InputText class="input-tierra" @bind-Value="_model.Email" 
+                               placeholder="tu@email.com" autocomplete="username" />
+                    <ValidationMessage For="@(() => _model.Email)" 
+                                       style="color: #A87B64; font-size: 13px; margin-top: 4px; display: block;" />
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 700; font-size: 14px;">
+                        Contraseña
+                    </label>
+                    <InputText class="input-tierra" @bind-Value="_model.Password" 
+                               type="password" placeholder="••••••••" 
+                               autocomplete="current-password" />
+                    <ValidationMessage For="@(() => _model.Password)" 
+                                       style="color: #A87B64; font-size: 13px; margin-top: 4px; display: block;" />
+                </div>
+
+                <button type="submit" class="btn-tierra" disabled="@_isSubmitting">
+                    @(_isSubmitting ? "◦ Abriendo tu espacio..." : "◦ Iniciar mi viaje")
+                </button>
+            </EditForm>
+
+            <p style="text-align: center; margin-top: 24px; font-size: 14px; color: var(--barro-claro);">
+                ¿Primera vez aquí? 
+                <a href="@BuildRegisterLink()" 
+                   style="color: var(--terracota-oscura); font-weight: 800; text-decoration: none;">
+                    Crea tu historia
+                </a>
+            </p>
+
+            <p style="text-align: center; margin-top: 32px; font-size: 12px; color: var(--barro-claro);">
+                © 2026 SUE · Conecta con tus emociones
+            </p>
+        </div>
+    </div>
+
+    <!-- Mitad Derecha: Avatar Container -->
+    <div class="login-right linen">
+        <div class="avatar-container">
+            <div style="text-align: center;">
+                <div class="avatar-circle breathe" id="avatar-container">
+                    <span class="avatar-letter">S</span>
+                </div>
+                <p style="margin-top: 24px; font-weight: 700; color: var(--barro); 
+                          display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <span class="pulse-dot" style="width: 10px; height: 10px; border-radius: 50%; 
+                          background: var(--salvia-oscura); display: inline-block;"></span>
+                    Tu compañero empático está aquí
+                </p>
+                <p style="margin-top: 16px; font-family: var(--font-display); 
+                          font-size: 32px; font-weight: 700; color: var(--barro); 
+                          line-height: 1.2; max-width: 400px;">
+                    Conecta con tus emociones en un espacio cálido.
+                </p>
+                <p style="margin-top: 16px; color: var(--barro-claro); 
+                          max-width: 400px; line-height: 1.6;">
+                    Un lugar gentil para explorar conversaciones, emociones, bienestar y tu viaje personal.
+                </p>
+                <!-- AQUÍ PUEDES INSERTAR TU ANIMACIÓN DE AVATAR (Unity, Lottie, GIF, Canvas) -->
             </div>
-
-            <button class="hero-button hero-button-primary auth-submit" type="submit" disabled="@_isSubmitting">
-                @(_isSubmitting ? "Validando credenciales..." : "Entrar")
-            </button>
-        </EditForm>
-
-        <p class="auth-link-line">
-            No tienes cuenta todavia? <a href="@BuildRegisterLink()">Crear una cuenta</a>
-        </p>
-        <p class="auth-footnote">API-only auth flow · JWT persistido · rutas protegidas</p>
-    </article>
-</section>
+        </div>
+    </div>
+</div>
 
 @code {
     [SupplyParameterFromQuery(Name = "returnUrl")]
@@ -128,10 +157,10 @@
     private sealed class LoginInputModel
     {
         [Required(ErrorMessage = "El correo es obligatorio.")]
-        [EmailAddress(ErrorMessage = "Debes escribir un correo valido.")]
+        [EmailAddress(ErrorMessage = "Debes escribir un correo válido.")]
         public string Email { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "La contrasena es obligatoria.")]
+        [Required(ErrorMessage = "La contraseña es obligatoria.")]
         public string Password { get; set; } = string.Empty;
     }
 }

@@ -1,0 +1,105 @@
+@page "/avatar"
+@attribute [Authorize]
+
+<PageTitle>SUE — Avatar</PageTitle>
+
+<div class="sue-page">
+    <header class="sue-header">
+        <p class="sue-eyebrow">⌁ Compañero</p>
+        <h1 class="sue-title">Avatar SUE</h1>
+        <p class="sue-subtitle">Un espacio listo para tu animación de avatar.</p>
+    </header>
+
+    <div class="sue-two-cols">
+        <!-- Contenedor del avatar -->
+        <div class="sue-avatar-stage">
+            <div class="sue-avatar-frame" id="avatar-container">
+                <div class="sue-avatar-circle breathe">
+                    <span class="sue-avatar-letter">S</span>
+                </div>
+                <!-- REEMPLAZA ESTE DIV CON TU ANIMACIÓN: Unity WebGL, Lottie, GIF, Canvas, etc. -->
+            </div>
+
+            <p class="sue-avatar-expression">@_currentExpression</p>
+            <p class="sue-avatar-caption">Expresión actual del avatar</p>
+        </div>
+
+        <!-- Controles -->
+        <div class="sue-card">
+            <h2 class="sue-card-title">Controles de expresión</h2>
+            <p class="sue-subtitle" style="margin-bottom: 20px;">
+                Usa estos controles para previsualizar la integración futura del avatar.
+            </p>
+
+            <div class="sue-expressions-grid">
+                @foreach (var expression in _expressions)
+                {
+                    <button class="sue-expression-btn @(expression.Name == _currentExpression ? "active" : "")"
+                            @onclick="() => SetExpression(expression.Name)">
+                        <span class="sue-expression-icon">@expression.Icon</span>
+                        <span class="sue-expression-name">@expression.Name</span>
+                    </button>
+                }
+            </div>
+
+            <div class="sue-form-field" style="margin-top: 28px;">
+                <label class="sue-form-label">
+                    Intensidad de la animación: <span style="color: var(--terracota-oscura);">@_animationIntensity</span>/10
+                </label>
+                <input type="range" min="1" max="10" value="@_animationIntensity"
+                       class="sue-slider"
+                       @oninput="OnIntensityChanged" />
+            </div>
+
+            <div class="sue-avatar-note">
+                <p style="margin: 0 0 6px; font-weight: 800; color: var(--barro);">
+                    Contenedor del avatar: <code style="background: var(--arena-media); padding: 2px 6px; border-radius: 6px;">#avatar-container</code>
+                </p>
+                <p style="margin: 0; font-size: 13px; color: var(--barro-claro); line-height: 1.5;">
+                    Esta área es intencionalmente reemplazable con <strong>Unity WebGL</strong>, <strong>Lottie</strong>, <strong>GIF</strong> o un <strong>Canvas personalizado</strong>.
+                </p>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(_confirmationMessage))
+            {
+                <p style="margin-top: 16px; padding: 12px; border-radius: 12px; background: rgba(181,196,177,0.35); color: var(--salvia-oscura); font-size: 14px; font-weight: 700;">
+                    @_confirmationMessage
+                </p>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private class ExpressionItem
+    {
+        public string Name { get; set; } = "";
+        public string Icon { get; set; } = "";
+    }
+
+    private List<ExpressionItem> _expressions = new()
+    {
+        new() { Name = "Feliz", Icon = "○" },
+        new() { Name = "Calma", Icon = "◌" },
+        new() { Name = "Pensativo", Icon = "?" },
+        new() { Name = "Cariñoso", Icon = "◦" }
+    };
+
+    private string _currentExpression = "Calma";
+    private int _animationIntensity = 5;
+    private string? _confirmationMessage;
+
+    private void SetExpression(string name)
+    {
+        _currentExpression = name;
+        _confirmationMessage = $"El avatar ahora muestra una expresión {name.ToLower()}.";
+    }
+
+    private void OnIntensityChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var value))
+        {
+            _animationIntensity = value;
+        }
+    }
+}
