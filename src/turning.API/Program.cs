@@ -1,7 +1,4 @@
-using System.Text;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using Turning.API.Extensions;
 using Turning.API.Middleware;
@@ -24,37 +21,60 @@ builder.Services
     .AddApplicationServices()
     .AddInfrastructureServices(builder.Configuration);
 
-builder.Services.AddCorsConfiguration();
+builder.Services.AddCorsConfiguration(builder.Configuration);
 
-var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "Turning.API";
-var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "Turning.Web";
-var jwtSigningKey = builder.Configuration["Jwt:SigningKey"]
-    ?? "please-change-this-development-key-with-at-least-32-chars";
-var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSigningKey));
-
-builder.Services
-    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateIssuerSigningKey = true,
-            ValidateLifetime = true,
-            ValidIssuer = jwtIssuer,
-            ValidAudience = jwtAudience,
-            IssuerSigningKey = signingKey,
-            ClockSkew = TimeSpan.FromMinutes(1)
-        };
-    });
+var startupLogger = new Serilog.Extensions.Logging.SerilogLoggerFactory(Log.Logger).CreateLogger("Turning.API.Jwt");
+builder.Services.AddJwtAuthentication(builder.Configuration, builder.Environment, startupLogger);
 
 builder.Services.AddAuthorization();
 
 // Agregar controllers y Swagger
-builder.Services.AddControllers();
+// El filtro de propietario va global: las rutas anidadas bajo
+// /api/sessions/{sessionId}/... nacieron sin validarlo, y hacerlo opt-in
+// repetiria el problema con el proximo controller que se agregue.
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add<Turning.API.Filters.SessionOwnershipFilter>();
+});
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new Microsoft.OpenApi.OpenApiInfo
+    {
+        Title = "Turning API",
+        Version = "v1",
+        Description = "API del experimento de interacciones empaticas humano-IA. "
+            + "Las rutas de sesion aplican aislamiento por propietario: una sesion ajena "
+            + "responde 404, igual que una inexistente, para no revelar por enumeracion "
+            + "que el identificador existe."
+    });
+
+    // Los <summary> de controllers y DTOs se muestran en Swagger UI.
+    var xmlApi = Path.Combine(AppContext.BaseDirectory, "turning.API.xml");
+    if (File.Exists(xmlApi)) options.IncludeXmlComments(xmlApi, includeControllerXmlComments: true);
+
+    var xmlApplication = Path.Combine(AppContext.BaseDirectory, "turning.Application.xml");
+    if (File.Exists(xmlApplication)) options.IncludeXmlComments(xmlApplication);
+
+    // Sin esto no se puede probar un endpoint autenticado desde Swagger UI.
+    options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = Microsoft.OpenApi.SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = Microsoft.OpenApi.ParameterLocation.Header,
+        Description = "Token JWT obtenido de POST /api/auth/login. Se envia como: Bearer {token}"
+    });
+
+    options.AddSecurityRequirement(document => new Microsoft.OpenApi.OpenApiSecurityRequirement
+    {
+        {
+            new Microsoft.OpenApi.OpenApiSecuritySchemeReference("Bearer", document),
+            new List<string>()
+        }
+    });
+});
 
 var app = builder.Build();
 
@@ -76,7 +96,27 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseExceptionHandling();
-app.UseHttpsRedirection();
+
+if (app.Environment.IsDevelopment())
+{
+    // En desarrollo, /api no se redirige a HTTPS. Un preflight OPTIONS no sigue
+    // redirecciones: si se le responde 307, el navegador aborta la peticion y
+    // reporta un error de CORS opaco, sin que la API registre nada. Fuera de
+    // Development se mantiene la redireccion para todo.
+    app.UseWhen(
+        context => !context.Request.Path.StartsWithSegments("/api"),
+        branch => branch.UseHttpsRedirection());
+
+    foreach (var origen in Turning.API.Extensions.ServiceExtensions.GetConfiguredCorsOrigins(builder.Configuration))
+    {
+        app.Logger.LogInformation("CORS: origen permitido {Origen}", origen);
+    }
+}
+else
+{
+    app.UseHttpsRedirection();
+}
+
 app.UseCors("AllowSpecific");
 app.UseAuthentication();
 app.UseAuthorization();

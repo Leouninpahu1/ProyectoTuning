@@ -1,5 +1,6 @@
 using Turning.Application.Exceptions;
 using Turning.Application.Interfaces;
+using Turning.Domain.Common;
 using Turning.Domain.Entities;
 using TurningApplicationException = Turning.Application.Exceptions.ApplicationException;
 
@@ -91,6 +92,19 @@ public sealed class AuthService : IAuthService
 
         if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 8)
             throw new TurningApplicationException("La contraseña debe tener al menos 8 caracteres.", "AUTH_INVALID_REQUEST");
+
+        if (string.IsNullOrWhiteSpace(request.Role))
+            throw new TurningApplicationException(
+                $"El rol es obligatorio. Roles válidos: {string.Join(", ", UserRoles.All)}.",
+                "AUTH_ROLE_REQUIRED");
+
+        // El registro público acepta por ahora cualquier rol conocido, incluidos
+        // los privilegiados. Restringirlo a Participant está pendiente de acordar
+        // con el equipo: hoy no existe otra vía de crear Researchers para pruebas.
+        if (!UserRoles.IsKnown(request.Role))
+            throw new TurningApplicationException(
+                $"El rol '{request.Role}' no es un rol reconocido. Roles válidos: {string.Join(", ", UserRoles.All)}.",
+                "AUTH_ROLE_UNKNOWN");
     }
 
     private static void ValidateLoginRequest(LoginRequest request)

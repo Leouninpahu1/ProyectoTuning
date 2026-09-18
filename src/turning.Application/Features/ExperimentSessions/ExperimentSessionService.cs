@@ -36,28 +36,29 @@ public sealed class ExperimentSessionService : IExperimentSessionService
         var s = await _repo.GetLatestByOwnerAsync(ownerUserId, cancellationToken);
         return s is null ? null : Map(s);
     }
-    public async Task<ExperimentSessionSnapshot> GetByIdAsync(Guid id, CancellationToken ct = default)
+    public async Task<ExperimentSessionSnapshot> GetByIdAsync(Guid id, Guid requestingUserId, bool isPrivilegedRequester, CancellationToken ct = default)
     {
-        var s = await _repo.GetByIdAsync(id, ct) ?? throw new TurningApplicationException("Sesion no encontrada.", "SESSION_NOT_FOUND");
+        var s = await GetAccessibleSessionAsync(id, requestingUserId, isPrivilegedRequester, ct);
         return Map(s);
     }
-    public async Task<PagedSessionsResult> ListByParticipantAsync(Guid participantId, int page, int pageSize, CancellationToken ct = default)
+    public async Task<PagedSessionsResult> ListByParticipantAsync(Guid participantId, Guid requestingUserId, bool isPrivilegedRequester, int page, int pageSize, CancellationToken ct = default)
     {
+        if (requestingUserId != participantId && !isPrivilegedRequester) throw new TurningApplicationException("No autorizado para consultar sesiones de otro participante.", "SESSION_FORBIDDEN");
         if (page < 1 || pageSize < 1 || pageSize > 50) throw new TurningApplicationException("Paginacion invalida.", "SESSION_INVALID_PAGE");
         var items = await _repo.ListByOwnerAsync(participantId, page, pageSize, ct);
         var total = await _repo.CountByOwnerAsync(participantId, ct);
         return new PagedSessionsResult { Items = items.Select(Map).ToList(), Total = total, Page = page, PageSize = pageSize };
     }
-    public async Task<ExperimentSessionSnapshot> ActivateAsync(Guid id, CancellationToken ct = default)
+    public async Task<ExperimentSessionSnapshot> ActivateAsync(Guid id, Guid requestingUserId, bool isPrivilegedRequester, CancellationToken ct = default)
     {
-        var s = await _repo.GetByIdAsync(id, ct) ?? throw new TurningApplicationException("Sesion no encontrada.", "SESSION_NOT_FOUND");
+        var s = await GetAccessibleSessionAsync(id, requestingUserId, isPrivilegedRequester, ct);
         try { s.Activate(TimeSpan.FromSeconds(_opts.DurationSeconds)); } catch (DomainException ex) { throw new TurningApplicationException(ex.Message, "SESSION_CONFLICT"); }
         try { await _repo.SaveChangesAsync(ct); } catch (Exception ex) when (ex.GetType().Name.Contains("Concurrency")) { throw new TurningApplicationException("Conflicto de concurrencia.", "SESSION_CONFLICT"); }
         return Map(s);
     }
-    public async Task<ExperimentSessionSnapshot> CompleteAsync(Guid id, CancellationToken ct = default)
+    public async Task<ExperimentSessionSnapshot> CompleteAsync(Guid id, Guid requestingUserId, bool isPrivilegedRequester, CancellationToken ct = default)
     {
-        var s = await _repo.GetByIdAsync(id, ct) ?? throw new TurningApplicationException("Sesion no encontrada.", "SESSION_NOT_FOUND");
+        var s = await GetAccessibleSessionAsync(id, requestingUserId, isPrivilegedRequester, ct);
         try { s.Complete(); } catch (DomainException ex) { throw new TurningApplicationException(ex.Message, "SESSION_CONFLICT"); }
         try { await _repo.SaveChangesAsync(ct); } catch (Exception ex) when (ex.GetType().Name.Contains("Concurrency")) { throw new TurningApplicationException("Conflicto de concurrencia.", "SESSION_CONFLICT"); }
         return Map(s);
@@ -70,6 +71,33 @@ public sealed class ExperimentSessionService : IExperimentSessionService
         try { await _repo.SaveChangesAsync(ct); } catch (Exception ex) when (ex.GetType().Name.Contains("Concurrency")) { throw new TurningApplicationException("Conflicto de concurrencia.", "SESSION_CONFLICT"); }
         return Map(s);
     }
+
+    /// <summary>
+    /// Resuelve una sesion aplicando aislamiento por propietario: un solicitante que no
+    /// es dueno ni privilegiado recibe el mismo SESSION_NOT_FOUND que si no existiera,
+    /// para no filtrar la existencia de sesiones ajenas por enumeracion de GUIDs.
+    /// </summary>
+    private async Task<ExperimentSession> GetAccessibleSessionAsync(Guid id, Guid requestingUserId, bool isPrivilegedRequester, CancellationToken ct)
+    {
+        var s = await _repo.GetByIdAsync(id, ct) ?? throw new TurningApplicationException("Sesion no encontrada.", "SESSION_NOT_FOUND");
+        if (!HasAccess(s, requestingUserId, isPrivilegedRequester))
+            throw new TurningApplicationException("Sesion no encontrada.", "SESSION_NOT_FOUND");
+        return s;
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> IsSessionAccessibleAsync(Guid sessionId, Guid requestingUserId, bool isPrivilegedRequester, CancellationToken ct = default)
+    {
+        var s = await _repo.GetByIdAsync(sessionId, ct);
+        return s is not null && HasAccess(s, requestingUserId, isPrivilegedRequester);
+    }
+
+    /// <summary>
+    /// Unica definicion de "puede operar sobre esta sesion": el dueno, o un
+    /// solicitante privilegiado.
+    /// </summary>
+    private static bool HasAccess(ExperimentSession session, Guid requestingUserId, bool isPrivilegedRequester) =>
+        isPrivilegedRequester || session.OwnerUserId == requestingUserId;
 
     private static ExperimentalCondition ParseCondition(string? preferredCondition)
     {
@@ -86,13 +114,6 @@ public sealed class ExperimentSessionService : IExperimentSessionService
         };
     }
 
-    private static ExperimentSessionSnapshot Map(ExperimentSession s) => new()
-    {
-        Id = s.Id, SessionCode = s.SessionCode, Condition = s.Condition.ToString(), Status = s.Status.ToString(),
-        AvatarState = s.AvatarState, ConversationTurnCount = s.ConversationTurnCount, EmotionSampleCount = s.EmotionSampleCount,
-        LastDetectedEmotion = s.LastDetectedEmotion, CreatedAtUtc = s.CreatedAt, ActivatedAtUtc = s.ActivatedAtUtc, ExpiresAtUtc = s.ExpiresAtUtc,
-        LastActivityAtUtc = s.LastActivityAtUtc, CompletedAtUtc = s.CompletedAtUtc, CancelledAtUtc = s.CancelledAtUtc, CancellationReason = s.CancellationReason,
-        ConversationStage = s.ConversationTurnCount == 0 ? "ready-for-first-turn" : "in-progress",
-        EmotionStage = s.EmotionSampleCount == 0 ? "ready-for-first-signal" : "monitoring", AvatarStage = s.AvatarState
-    };
+    private static ExperimentSessionSnapshot Map(ExperimentSession s) =>
+        ExperimentSessionSnapshotMapper.ToSnapshot(s);
 }

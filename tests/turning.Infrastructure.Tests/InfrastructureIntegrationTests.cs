@@ -1,6 +1,6 @@
 using FluentAssertions;
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Turning.Domain.Common;
 using Turning.Domain.Entities;
 using Turning.Infrastructure.Persistence;
 using Turning.Infrastructure.Repositories;
@@ -9,23 +9,25 @@ using Xunit;
 namespace Turning.Infrastructure.Tests;
 
 /// <summary>
-/// Pruebas de integración para la capa Infrastructure.
+/// Pruebas de integración para la capa Infrastructure, contra SQL Server LocalDB
+/// (único proveedor soportado por el proyecto desde 2026-08-29).
 /// </summary>
 public class InfrastructureIntegrationTests : IDisposable
 {
-    private readonly SqliteConnection _connection;
     private readonly TurningDbContext _dbContext;
 
     /// <summary>
-    /// Inicializa una base SQLite en memoria para la prueba.
+    /// Inicializa una base SQL Server LocalDB aislada (nombre único por instancia
+    /// de prueba) para evitar colisiones entre tests que corren en paralelo.
     /// </summary>
     public InfrastructureIntegrationTests()
     {
-        _connection = new SqliteConnection("Data Source=:memory:");
-        _connection.Open();
+        var databaseName = $"TurningTests_{Guid.NewGuid():N}";
+        var connectionString =
+            $"Server=(localdb)\\MSSQLLocalDB;Database={databaseName};Trusted_Connection=True;TrustServerCertificate=True";
 
         var options = new DbContextOptionsBuilder<TurningDbContext>()
-            .UseSqlite(_connection)
+            .UseSqlServer(connectionString)
             .Options;
 
         _dbContext = new TurningDbContext(options);
@@ -37,7 +39,7 @@ public class InfrastructureIntegrationTests : IDisposable
     {
         // Arrange
         var repository = new UserAccountRepository(_dbContext);
-        var user = UserAccount.Create("auth@example.com", "Auth User", "hash-value");
+        var user = UserAccount.Create("auth@example.com", "Auth User", "hash-value", UserRoles.Participant);
 
         await repository.AddAsync(user);
         await repository.SaveChangesAsync();
@@ -56,7 +58,7 @@ public class InfrastructureIntegrationTests : IDisposable
     {
         // Arrange
         var repository = new ExperimentSessionRepository(_dbContext);
-        var owner = UserAccount.Create("owner@example.com", "Session Owner", "hash-value");
+        var owner = UserAccount.Create("owner@example.com", "Session Owner", "hash-value", UserRoles.Participant);
         _dbContext.UserAccounts.Add(owner);
         await _dbContext.SaveChangesAsync();
         var ownerUserId = owner.Id;
@@ -84,7 +86,7 @@ public class InfrastructureIntegrationTests : IDisposable
         // Arrange
         var sessionRepository = new ExperimentSessionRepository(_dbContext);
         var conversationRepository = new ConversationTurnRepository(_dbContext);
-        var owner = UserAccount.Create("conversation-owner@example.com", "Conversation Owner", "hash-value");
+        var owner = UserAccount.Create("conversation-owner@example.com", "Conversation Owner", "hash-value", UserRoles.Participant);
         _dbContext.UserAccounts.Add(owner);
         await _dbContext.SaveChangesAsync();
         var session = ExperimentSession.Create(owner.Id, ExperimentalCondition.AI);
@@ -107,10 +109,35 @@ public class InfrastructureIntegrationTests : IDisposable
         result[1].Sender.Should().Be(ConversationActor.Interlocutor);
     }
 
+    [Fact]
+    public async Task ExperimentSessionRepository_ShouldOnlyReturnSessionsOwnedByRequestedOwner()
+    {
+        // Arrange
+        var repository = new ExperimentSessionRepository(_dbContext);
+        var ownerA = UserAccount.Create("owner-a@example.com", "Owner A", "hash-value", UserRoles.Participant);
+        var ownerB = UserAccount.Create("owner-b@example.com", "Owner B", "hash-value", UserRoles.Participant);
+        _dbContext.UserAccounts.AddRange(ownerA, ownerB);
+        await _dbContext.SaveChangesAsync();
+
+        await repository.AddAsync(ExperimentSession.Create(ownerA.Id, ExperimentalCondition.Human));
+        await repository.AddAsync(ExperimentSession.Create(ownerA.Id, ExperimentalCondition.AI));
+        await repository.AddAsync(ExperimentSession.Create(ownerB.Id, ExperimentalCondition.AI));
+        await repository.SaveChangesAsync();
+
+        // Act
+        var ownerASessions = await repository.ListByOwnerAsync(ownerA.Id, page: 1, pageSize: 50);
+        var ownerACount = await repository.CountByOwnerAsync(ownerA.Id);
+
+        // Assert
+        ownerASessions.Should().HaveCount(2);
+        ownerASessions.Should().OnlyContain(s => s.OwnerUserId == ownerA.Id);
+        ownerACount.Should().Be(2);
+    }
+
     /// <inheritdoc />
     public void Dispose()
     {
+        _dbContext.Database.EnsureDeleted();
         _dbContext.Dispose();
-        _connection.Dispose();
     }
 }

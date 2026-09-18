@@ -1,7 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Turning.Application.Features.Auth;
 using Turning.Application.Interfaces;
@@ -14,26 +14,28 @@ namespace Turning.Infrastructure.Security;
 /// </summary>
 public sealed class JwtTokenService : ITokenService
 {
-    private readonly IConfiguration _configuration;
+    private readonly JwtOptions _options;
 
     /// <summary>
     /// Constructor del servicio JWT.
     /// </summary>
-    public JwtTokenService(IConfiguration configuration)
+    public JwtTokenService(IOptions<JwtOptions> options)
     {
-        _configuration = configuration;
+        _options = options.Value;
     }
 
     /// <inheritdoc />
     public AuthResult CreateToken(UserAccount userAccount)
     {
-        var issuer = _configuration["Jwt:Issuer"] ?? "Turning.API";
-        var audience = _configuration["Jwt:Audience"] ?? "Turning.Web";
-        var signingKey = _configuration["Jwt:SigningKey"]
-            ?? throw new InvalidOperationException("La configuración Jwt:SigningKey es obligatoria.");
-        var expirationMinutes = int.TryParse(_configuration["Jwt:ExpirationMinutes"], out var parsedMinutes)
-            ? parsedMinutes
-            : 120;
+        var errors = _options.Validate();
+        if (errors.Count > 0)
+            throw new InvalidOperationException(
+                "No se puede emitir el token: configuracion Jwt invalida. " + string.Join(" | ", errors));
+
+        var issuer = _options.Issuer;
+        var audience = _options.Audience;
+        var signingKey = _options.SigningKey!;
+        var expirationMinutes = _options.ExpirationMinutes;
 
         var expiresAtUtc = DateTime.UtcNow.AddMinutes(expirationMinutes);
         var credentials = new SigningCredentials(

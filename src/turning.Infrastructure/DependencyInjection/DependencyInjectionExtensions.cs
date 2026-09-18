@@ -23,18 +23,10 @@ public static class DependencyInjectionExtensions
     public static IServiceCollection AddInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
     {
         var connectionString = configuration.GetConnectionString("DefaultConnection")
-            ?? "Data Source=turning.db";
-        var useSqlServer = connectionString.Contains("Server=", StringComparison.OrdinalIgnoreCase)
-            || connectionString.Contains("Initial Catalog", StringComparison.OrdinalIgnoreCase)
-            || (connectionString.Contains("Data Source=", StringComparison.OrdinalIgnoreCase)
-                && !connectionString.Contains(".db", StringComparison.OrdinalIgnoreCase));
+            ?? throw new InvalidOperationException(
+                "Falta la connection string 'DefaultConnection'. SQL Server es el único proveedor soportado.");
         services.AddDbContext<TurningDbContext>(options =>
-        {
-            if (useSqlServer)
-                options.UseSqlServer(connectionString, sql => sql.EnableRetryOnFailure());
-            else
-                options.UseSqlite(connectionString);
-        });
+            options.UseSqlServer(connectionString, sql => sql.EnableRetryOnFailure()));
 
         // Registra los repositorios
         // IMPORTANTE: En producción, reemplaza InMemorySampleRepository con una implementación real
@@ -52,6 +44,8 @@ public static class DependencyInjectionExtensions
         services.AddScoped<IUserAccountRepository, UserAccountRepository>();
         services.AddScoped<IPasswordHasherService, PasswordHasherService>();
         services.AddScoped<ITokenService, JwtTokenService>();
+        services.Configure<Turning.Application.Features.Auth.JwtOptions>(
+            configuration.GetSection(Turning.Application.Features.Auth.JwtOptions.SectionName));
         services.Configure<Turning.Application.Features.ExperimentSessions.SessionOptions>(configuration.GetSection("Session"));
         services.Configure<Turning.Infrastructure.Services.SessionOptions>(configuration.GetSection("Session"));
         services.AddHostedService<Services.SessionSchedulerService>();
