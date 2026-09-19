@@ -19,6 +19,12 @@ namespace Turning.API.Filters;
 /// Devuelve 404 —no 403— cuando la sesión es ajena, igual que
 /// <c>ExperimentSessionService</c>: quien pregunta no debe poder distinguir una
 /// sesión ajena de una inexistente enumerando GUIDs.
+///
+/// Desde que una sesión puede tener dos personas, el acceso no es un sí o un no: el filtro
+/// resuelve un <see cref="SessionAccessLevel"/> y exige <c>Owner</c> salvo que la ruta
+/// declare <see cref="AllowSessionInterlocutorAttribute"/>. Bajar el listón a "dueño o
+/// interlocutor" en todas las rutas le habría dado al interlocutor permiso para cancelar la
+/// sesión y leer los resultados del participante.
 /// </summary>
 public sealed class SessionOwnershipFilter : IAsyncAuthorizationFilter
 {
@@ -65,15 +71,33 @@ public sealed class SessionOwnershipFilter : IAsyncAuthorizationFilter
         var isPrivileged = user.IsInRole("Researcher") || user.IsInRole("Administrator");
 
         var sessionService = context.HttpContext.RequestServices.GetRequiredService<IExperimentSessionService>();
-        var accesible = await sessionService.IsSessionAccessibleAsync(
+        var level = await sessionService.GetAccessLevelAsync(
             sessionId,
             requestingUserId,
             isPrivileged,
             context.HttpContext.RequestAborted);
 
-        if (!accesible)
+        // Lo seguro sigue siendo lo que pasa por omision: sin el atributo, la ruta exige ser
+        // el dueno. El interlocutor solo entra donde alguien lo decidio explicitamente.
+        var minimumLevel = context.ActionDescriptor.EndpointMetadata.OfType<AllowSessionInterlocutorAttribute>().Any()
+            ? SessionAccessLevel.Interlocutor
+            : SessionAccessLevel.Owner;
+
+        if (level < minimumLevel)
+        {
             context.Result = new NotFoundObjectResult(new { error = "SESSION_NOT_FOUND" });
+            return;
+        }
+
+        // El controller necesita saber con que papel entra quien llama, sobre todo para
+        // decidir el emisor de un turno; volver a consultarlo seria una consulta de mas.
+        context.HttpContext.Items[SessionAccessLevelKey] = level;
     }
+
+    /// <summary>
+    /// Clave con la que el nivel de acceso resuelto queda disponible para el controller.
+    /// </summary>
+    public const string SessionAccessLevelKey = "SessionAccessLevel";
 
     private static Guid GetUserId(ClaimsPrincipal user)
     {

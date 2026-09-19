@@ -1,4 +1,5 @@
 using Turning.Domain.Common;
+using Turning.Domain.Exceptions;
 
 namespace Turning.Domain.Entities;
 
@@ -42,8 +43,39 @@ public sealed class ConversationTurn : BaseEntity
     /// </summary>
     public ConversationActor Sender { get; private set; }
 
+    /// <summary>
+    /// Texto del mensaje.
+    /// </summary>
     public string Message { get; private set; } = string.Empty;
+
+    /// <summary>
+    /// Turno que provocó este mensaje. Solo lo lleva la respuesta del interlocutor:
+    /// enlaza la contestación con la intervención del participante que la originó.
+    /// </summary>
     public Guid? OriginatingTurnId { get; private set; }
+
+    /// <summary>
+    /// Enlaza este turno con el que lo provocó.
+    /// </summary>
+    /// <remarks>
+    /// Existe para que el orquestador no tenga que asignar la propiedad por reflexión,
+    /// que es como se hacía antes. El enlace es de una sola vez: reasignarlo cambiaría
+    /// la trazabilidad de un dato ya persistido.
+    /// </remarks>
+    public void LinkOriginatingTurn(Guid originatingTurnId)
+    {
+        if (originatingTurnId == Guid.Empty)
+            throw new ArgumentException("El turno de origen es obligatorio.", nameof(originatingTurnId));
+
+        if (originatingTurnId == Id)
+            throw new DomainException("Un turno no puede originarse a sí mismo.");
+
+        if (OriginatingTurnId is not null && OriginatingTurnId != originatingTurnId)
+            throw new DomainException("El turno de origen ya estaba asignado y no se reasigna.");
+
+        OriginatingTurnId = originatingTurnId;
+        UpdatedAt = DateTime.UtcNow;
+    }
 
     /// <summary>
     /// Crea un turno de conversación validado y persistible.

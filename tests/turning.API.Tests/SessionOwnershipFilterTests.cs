@@ -18,12 +18,14 @@ namespace Turning.API.Tests;
 /// </summary>
 /// <remarks>
 /// Este filtro es la única barrera entre los datos de un participante y los de otro, y se
-/// aplica globalmente a toda ruta que lleve <c>{sessionId}</c>. Hasta ahora no tenía ninguna
-/// prueba: el aislamiento se verificaba a mano contra la API, que no es repetible ni detecta
-/// una regresión introducida por otra persona.
+/// aplica globalmente a toda ruta que lleve <c>{sessionId}</c>.
 ///
-/// El riesgo declarado en el Definition of Done es exactamente este: fuga de datos entre
-/// usuarios, con la instrucción de bloquear la release si falla.
+/// Desde que una sesión puede tener dos personas, el filtro resuelve un
+/// <see cref="SessionAccessLevel"/> y exige <c>Owner</c> salvo que la ruta declare
+/// <see cref="AllowSessionInterlocutorAttribute"/>. Esa distinción es lo más delicado del
+/// cambio: bajar el listón a "dueño o interlocutor" en todas las rutas le habría dado al
+/// interlocutor permiso para cancelar la sesión y leer los resultados del participante, así
+/// que aquí se comprueba en ambos sentidos.
 /// </remarks>
 public class SessionOwnershipFilterTests
 {
@@ -75,6 +77,9 @@ public class SessionOwnershipFilterTests
         return new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth", ClaimTypes.Name, ClaimTypes.Role));
     }
 
+    private void ArrangeLevel(SessionAccessLevel level, bool isPrivileged = false) =>
+        _sessions.GetAccessLevelAsync(SessionId, UserId, isPrivileged, Arg.Any<CancellationToken>()).Returns(level);
+
     private static void ShouldBeNotFoundWithSessionCode(IActionResult? result)
     {
         // 404 y no 403: quien pregunta no debe poder distinguir una sesión ajena de una
@@ -85,9 +90,9 @@ public class SessionOwnershipFilterTests
     }
 
     [Fact]
-    public async Task ShouldReturnNotFound_WhenTheSessionBelongsToSomeoneElse()
+    public async Task ShouldReturnNotFound_WhenTheCallerHasNothingToDoWithTheSession()
     {
-        _sessions.IsSessionAccessibleAsync(SessionId, UserId, false, Arg.Any<CancellationToken>()).Returns(false);
+        ArrangeLevel(SessionAccessLevel.None);
         var context = CreateContext(SessionId.ToString(), Authenticated(UserId));
 
         await new SessionOwnershipFilter().OnAuthorizationAsync(context);
@@ -96,14 +101,67 @@ public class SessionOwnershipFilterTests
     }
 
     [Fact]
-    public async Task ShouldLetTheRequestThrough_WhenTheSessionIsAccessible()
+    public async Task ShouldLetTheOwnerThrough()
     {
-        _sessions.IsSessionAccessibleAsync(SessionId, UserId, false, Arg.Any<CancellationToken>()).Returns(true);
+        ArrangeLevel(SessionAccessLevel.Owner);
         var context = CreateContext(SessionId.ToString(), Authenticated(UserId));
 
         await new SessionOwnershipFilter().OnAuthorizationAsync(context);
 
         context.Result.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ShouldRejectTheInterlocutor_OnRoutesWithoutTheOptIn()
+    {
+        ArrangeLevel(SessionAccessLevel.Interlocutor);
+        var context = CreateContext(SessionId.ToString(), Authenticated(UserId));
+
+        await new SessionOwnershipFilter().OnAuthorizationAsync(context);
+
+        // Lo seguro es lo que pasa por omisión: sin el atributo, la ruta exige ser el dueño.
+        // Es lo que impide que el interlocutor cancele la sesión o lea sus resultados.
+        ShouldBeNotFoundWithSessionCode(context.Result);
+    }
+
+    [Fact]
+    public async Task ShouldAcceptTheInterlocutor_OnRoutesWithTheOptIn()
+    {
+        ArrangeLevel(SessionAccessLevel.Interlocutor);
+        var context = CreateContext(
+            SessionId.ToString(), Authenticated(UserId), new AllowSessionInterlocutorAttribute());
+
+        await new SessionOwnershipFilter().OnAuthorizationAsync(context);
+
+        context.Result.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ShouldStillRejectAStranger_EvenOnRoutesWithTheOptIn()
+    {
+        ArrangeLevel(SessionAccessLevel.None);
+        var context = CreateContext(
+            SessionId.ToString(), Authenticated(UserId), new AllowSessionInterlocutorAttribute());
+
+        await new SessionOwnershipFilter().OnAuthorizationAsync(context);
+
+        // El opt-in abre la puerta al interlocutor asignado, no a cualquiera.
+        ShouldBeNotFoundWithSessionCode(context.Result);
+    }
+
+    [Fact]
+    public async Task ShouldExposeTheResolvedLevel_ForTheController()
+    {
+        ArrangeLevel(SessionAccessLevel.Interlocutor);
+        var context = CreateContext(
+            SessionId.ToString(), Authenticated(UserId), new AllowSessionInterlocutorAttribute());
+
+        await new SessionOwnershipFilter().OnAuthorizationAsync(context);
+
+        // El controller lo usa para saber con qué papel entra quien llama, sin repetir la
+        // consulta.
+        context.HttpContext.Items[SessionOwnershipFilter.SessionAccessLevelKey]
+            .Should().Be(SessionAccessLevel.Interlocutor);
     }
 
     [Theory]
@@ -111,26 +169,26 @@ public class SessionOwnershipFilterTests
     [InlineData("Administrator")]
     public async Task ShouldMarkPrivilegedRoles_SoTheServiceCanDecide(string role)
     {
-        _sessions.IsSessionAccessibleAsync(SessionId, UserId, true, Arg.Any<CancellationToken>()).Returns(true);
+        ArrangeLevel(SessionAccessLevel.Privileged, isPrivileged: true);
         var context = CreateContext(SessionId.ToString(), Authenticated(UserId, role));
 
         await new SessionOwnershipFilter().OnAuthorizationAsync(context);
 
         context.Result.Should().BeNull();
-        await _sessions.Received(1).IsSessionAccessibleAsync(
+        await _sessions.Received(1).GetAccessLevelAsync(
             SessionId, UserId, true, Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task ShouldNotTreatOtherRolesAsPrivileged()
     {
-        _sessions.IsSessionAccessibleAsync(SessionId, UserId, false, Arg.Any<CancellationToken>()).Returns(false);
+        ArrangeLevel(SessionAccessLevel.None);
         var context = CreateContext(SessionId.ToString(), Authenticated(UserId, "Participant"));
 
         await new SessionOwnershipFilter().OnAuthorizationAsync(context);
 
         ShouldBeNotFoundWithSessionCode(context.Result);
-        await _sessions.Received(1).IsSessionAccessibleAsync(
+        await _sessions.Received(1).GetAccessLevelAsync(
             SessionId, UserId, false, Arg.Any<CancellationToken>());
     }
 
@@ -144,7 +202,7 @@ public class SessionOwnershipFilterTests
         // Cubre el caso de un endpoint anónimo que llevara {sessionId}: sin identidad no hay
         // nada que comparar, así que no puede pasar de largo.
         context.Result.Should().BeOfType<UnauthorizedResult>();
-        await _sessions.DidNotReceive().IsSessionAccessibleAsync(
+        await _sessions.DidNotReceive().GetAccessLevelAsync(
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
 
@@ -167,9 +225,9 @@ public class SessionOwnershipFilterTests
 
         await new SessionOwnershipFilter().OnAuthorizationAsync(context);
 
-        // Rutas como GET /api/results no son asunto de este filtro.
+        // Rutas como GET /api/results o POST /api/sessions/join no son asunto de este filtro.
         context.Result.Should().BeNull();
-        await _sessions.DidNotReceive().IsSessionAccessibleAsync(
+        await _sessions.DidNotReceive().GetAccessLevelAsync(
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
 
@@ -183,7 +241,7 @@ public class SessionOwnershipFilterTests
         // El enrutamiento ya habrá rechazado la petición por la restricción :guid; aquí solo
         // se comprueba que el filtro no invente una sesión ni reviente.
         context.Result.Should().BeNull();
-        await _sessions.DidNotReceive().IsSessionAccessibleAsync(
+        await _sessions.DidNotReceive().GetAccessLevelAsync(
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
 
@@ -195,7 +253,7 @@ public class SessionOwnershipFilterTests
         await new SessionOwnershipFilter().OnAuthorizationAsync(context);
 
         context.Result.Should().BeNull();
-        await _sessions.DidNotReceive().IsSessionAccessibleAsync(
+        await _sessions.DidNotReceive().GetAccessLevelAsync(
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
 
@@ -209,7 +267,7 @@ public class SessionOwnershipFilterTests
 
         // Si otro filtro ya decidió, este no lo pisa ni gasta una consulta.
         context.Result.Should().BeOfType<BadRequestResult>();
-        await _sessions.DidNotReceive().IsSessionAccessibleAsync(
+        await _sessions.DidNotReceive().GetAccessLevelAsync(
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
 
@@ -222,7 +280,7 @@ public class SessionOwnershipFilterTests
             [new Claim(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub, UserId.ToString())],
             "TestAuth");
 
-        _sessions.IsSessionAccessibleAsync(SessionId, UserId, false, Arg.Any<CancellationToken>()).Returns(true);
+        ArrangeLevel(SessionAccessLevel.Owner);
         var context = CreateContext(SessionId.ToString(), new ClaimsPrincipal(identity));
 
         await new SessionOwnershipFilter().OnAuthorizationAsync(context);
@@ -233,7 +291,7 @@ public class SessionOwnershipFilterTests
     [Fact]
     public async Task ShouldAcceptAGuidRouteValue_NotOnlyItsStringForm()
     {
-        _sessions.IsSessionAccessibleAsync(SessionId, UserId, false, Arg.Any<CancellationToken>()).Returns(true);
+        ArrangeLevel(SessionAccessLevel.Owner);
         var context = CreateContext(SessionId, Authenticated(UserId));
 
         await new SessionOwnershipFilter().OnAuthorizationAsync(context);

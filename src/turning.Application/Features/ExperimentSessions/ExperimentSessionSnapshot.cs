@@ -31,6 +31,27 @@ public sealed class ExperimentSessionSnapshot
     public required string AvatarState { get; init; }
 
     /// <summary>
+    /// Interlocutor humano asignado, si lo hay. Solo aplica a sesiones de condicion Human.
+    /// </summary>
+    public Guid? InterlocutorUserId { get; init; }
+
+    /// <summary>
+    /// Indica si la sesion ya tiene interlocutor humano.
+    /// </summary>
+    public bool HasInterlocutor { get; init; }
+
+    /// <summary>
+    /// Momento en que el interlocutor se incorporo.
+    /// </summary>
+    public DateTime? InterlocutorJoinedAtUtc { get; init; }
+
+    /// <summary>
+    /// Indica si la sesion espera todavia a un interlocutor humano, para que el cliente
+    /// pueda mostrar la sala de espera en vez de un chat que nadie va a contestar.
+    /// </summary>
+    public bool IsAwaitingInterlocutor { get; init; }
+
+    /// <summary>
     /// Cantidad de turnos conversacionales registrados.
     /// </summary>
     public int ConversationTurnCount { get; init; }

@@ -62,6 +62,72 @@ $env:ConnectionStrings__DefaultConnection = "Server=...;User Id=...;Password=...
 
 **Ninguna connection string con usuario y contraseña debe commitearse.**
 
+## Claves de los proveedores de IA
+
+La generación de texto usa una cadena de proveedores: **OpenAI → OpenRouter → adaptador por
+reglas**. Cada uno necesita su clave, y como con la de firma del JWT, **nunca van en
+`appsettings*.json`**:
+
+```powershell
+dotnet user-secrets --project src/turning.API set "Ai:OpenAi:ApiKey" "sk-..."
+dotnet user-secrets --project src/turning.API set "Ai:OpenRouter:ApiKey" "sk-or-..."
+```
+
+O por variable de entorno:
+
+```powershell
+$env:Ai__OpenAi__ApiKey = "sk-..."
+$env:Ai__OpenRouter__ApiKey = "sk-or-..."
+```
+
+Ojo con el nombre: la ruta usa `OpenAi` y `OpenRouter` tal como aparecen en la sección de
+configuración, no `openai`/`openrouter`, que son los nombres con los que cada proveedor se
+identifica en las respuestas y los eventos.
+
+### Las claves ya están declaradas, con valor de marcador de posición
+
+`appsettings.json` trae las dos variables con un valor evidente:
+
+```json
+"Ai": {
+  "OpenAi":     { "ApiKey": "DUMMY-REEMPLAZAR-Ai__OpenAi__ApiKey" },
+  "OpenRouter": { "ApiKey": "DUMMY-REEMPLAZAR-Ai__OpenRouter__ApiKey" }
+}
+```
+
+Están ahí para que se vea qué hace falta y con qué nombre exacto, no porque sirvan. **El
+código reconoce estos valores como marcadores de posición** (`AiProviderOptions.IsPlaceholderApiKey`)
+y trata al proveedor como no disponible, igual que si la variable no existiera.
+
+Eso importa: sin ese reconocimiento, una clave ficticia se tomaría por buena, el proveedor
+entraría en la cadena, saldría a `api.openai.com`, recibiría un 401 y recién entonces se
+saltaría. Una llamada de red inútil y su latencia en el primer turno de cada sesión.
+
+Se reconocen, sin distinguir mayúsculas: cualquier valor que empiece por `dummy` o contenga
+`reemplazar` o `placeholder`, y los literales `changeme`, `cambiar`, `pendiente`, `todo`,
+`tbd`, `none`, `null`, `your-api-key`, `your-api-key-here`, `sk-xxx`, `sk-...`, `sk-or-xxx`.
+
+Cuando llegue una clave real, **no se edita `appsettings.json`**: se sobreescribe por
+user-secrets o entorno, como arriba. Los valores del archivo versionado se quedan como
+están.
+
+### La diferencia con `Jwt:SigningKey`
+
+Que falte una clave de IA **no impide arrancar en ningún entorno**, y eso es deliberado: la
+cadena está pensada para degradarse. Un proveedor sin clave se salta con un aviso al
+arrancar, y si no queda ninguno responde el adaptador por reglas, con `degraded: true` en la
+respuesta y un evento `DegradedOperation` en la sesión. Con `Jwt:SigningKey` es al revés:
+sin ella no hay alternativa aceptable, así que fuera de Development la API no arranca.
+
+Lo que sí rompe el arranque fuera de Development es una sección `Ai` mal formada —una URL
+inválida, un timeout por intento mayor que el presupuesto total, o un `ProviderOrder` sin el
+eslabón `rule-based`—, porque eso es un error de configuración y no una carencia prevista.
+
+### Qué no es secreto
+
+`BaseUrl`, `Model`, los timeouts y los umbrales del cortacircuitos están versionados en
+`appsettings.json`: no son secretos y conviene que todo el equipo use los mismos.
+
 ## Pendiente
 
 La clave que estuvo en el historial de git seguirá siendo visible ahí. Como nunca
