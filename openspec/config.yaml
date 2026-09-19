@@ -1,0 +1,97 @@
+schema: spec-driven
+
+context: |
+  Language: es
+  All artifacts must be written in es.
+  Keep OpenSpec structural headings and SHALL/MUST keywords in English.
+
+  # Proyecto Turning — sistema de evaluación de interacciones empáticas humano-IA
+
+  Test de Turing empático: un participante conversa durante una sesión temporizada
+  con un interlocutor que es una persona (condición `Human`) o una IA (condición
+  `AI`), sin saber cuál. Se registran sus emociones, se deriva la expresión de un
+  avatar y al cerrar se entrega una encuesta. Desarrollo universitario.
+
+  ## Plataforma
+
+  - .NET 10, C# 14, ASP.NET Core, Blazor Web App.
+  - Clean Architecture en cinco proyectos: `turning.Domain`, `turning.Application`,
+    `turning.Infrastructure`, `turning.API`, `turning.Web`.
+  - Pruebas con xUnit en `tests/`, una suite por capa.
+
+  ## Decisiones transversales
+
+  - **SQL Server es el único proveedor de persistencia.** Se accede con EF Core vía
+    `TurningDbContext` y migraciones. SQLite fue eliminado del proyecto el
+    2026-08-29 y no se usa ni siquiera para pruebas: las pruebas de Infrastructure
+    corren contra SQL Server LocalDB.
+  - **Agregado raíz:** `ExperimentSession`. Toda entidad de ejecución cuelga de una
+    sesión existente y la referencia por `SessionId`. Las definiciones reutilizables
+    de encuesta son la excepción: existen sin sesión.
+  - **Condiciones:** `Human` y `AI`. `Human` significa que la respuesta viene de una
+    persona; `AI`, que la genera el adaptador de IA. La condición no describe el
+    avatar ni el proveedor de análisis emocional. El backend decide y persiste la
+    asignación; la preferencia del cliente es solo una señal.
+  - **Tiempo:** UTC en persistencia, ISO 8601 en contratos.
+  - **Identificadores:** `Guid` para entidades; `SessionCode` con formato `EXP-{8}`
+    en mayúsculas, derivado del `Guid` de la sesión.
+  - **Puertos y adaptadores:** OpenAI y Hume AI se representan con puertos en
+    Application (`ITextGenerationPort`, `IEmotionAnalysisPort`) y adaptadores en
+    Infrastructure. La primera versión usa adaptadores simulados.
+  - **Frontera del cliente:** `turning.Web` consume únicamente endpoints de
+    `turning.API`. Nunca accede a base de datos, repositorios ni proveedores
+    externos.
+  - **Lógica de negocio:** vive en `turning.Application`. Los controllers no
+    acceden a `TurningDbContext` ni contienen reglas de negocio.
+  - **Inmutabilidad:** los registros experimentales no se modifican durante el
+    ensayo; cualquier corrección queda auditada.
+  - **Fallos externos:** se persisten como evento `DegradedOperation` en
+    `ExperimentEvents`, con sesión, operación, código, mensaje seguro, timestamp y
+    si admite reintento. Un fallo externo nunca cambia el estado de la sesión.
+
+  ## Códigos de error
+
+  - `400` entrada inválida
+  - `401` / `403` autenticación / autorización
+  - `404` recurso inexistente **o ajeno** (aislamiento por propietario: no se
+    revela la existencia de un GUID de otro usuario)
+  - `409` conflicto de estado o de concurrencia
+  - `410` evento expirado
+  - `422` regla de negocio
+  - `503` proveedor externo no disponible
+
+  ## Roles
+
+  - `Participant`: ejecuta el ensayo y responde la encuesta.
+  - `Researcher`: consulta sesiones y resultados de forma transversal.
+  - `Administrator`: cancela sesiones y administra configuración.
+
+  ## Estado de la migración de specs
+
+  Las specs de `specs/legacy/` (001–009, formato spec-kit) quedaron deprecadas el
+  2026-09-12 y se conservan solo como referencia histórica. Lo que describen no
+  siempre coincide con el código: contenían rutas distintas a las reales, dos
+  numeraciones RF incompatibles y reglas de SQLite ya derogadas. `openspec/specs/`
+  es ahora la única fuente de verdad sobre lo implementado.
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always include a "Non-goals" section
+#     tasks:
+#       - Break tasks into chunks of max 2 hours
+
+# Per-operation guidance (optional)
+# Add advisory guidance for how apply and archive work should be conducted.
+# This is separate from artifact rules above.
+# Example:
+#   operations:
+#     apply:
+#       guidance:
+#         - Keep test summaries concise
+#     archive:
+#       guidance:
+#         - Summarize the archive outcome before finishing

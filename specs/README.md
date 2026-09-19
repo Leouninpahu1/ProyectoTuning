@@ -1,41 +1,55 @@
 # Especificaciones del proyecto Turning
 
-## Orden de implementación
+> **Las especificaciones vivas del proyecto están en [`openspec/`](../openspec/), no aquí.**
 
-Las especificaciones forman una secuencia de módulos. Todas usan el mismo contrato de sesión y SQL Server como fuente oficial de persistencia mediante EF Core.
+Desde el 2026-09-12 el proyecto usa [OpenSpec](https://github.com/Fission-AI/OpenSpec)
+para la gestión de especificaciones. Las specs numeradas `001`–`009` en formato
+spec-kit quedaron deprecadas y se conservan en [`legacy/`](legacy/) únicamente
+como referencia histórica.
 
-| Orden | Especificación | Responsabilidad | Dependencias |
-|---|---|---|---|
-| 001 | Fundación del experimento | Alcance, arquitectura y vocabulario común | Ninguna |
-| 002 | Gestión de sesiones | Ciclo de vida y trazabilidad de una sesión | 001 |
-| 003 | Asignación | Decide condición Humano/IA | 001, 002 |
-| 004 | Emociones | Persiste lecturas emocionales | 001, 002 |
-| 005 | Avatar | Traduce emociones a expresiones | 001, 004 |
-| 006 | Encuestas | Entrega y persiste respuestas | 001, 002 |
-| 007 | Orquestación | Coordina conversación, IA, emociones y cierre | 002–006 |
-| 008 | Resultados | Consulta y exporta resultados | 002–007 |
-| 009 | Tiempo real web | Actualiza el cliente durante la sesión | 002, 007, 008 |
+## Dónde está cada cosa ahora
 
-## Decisiones comunes
+| Quiero… | Está en |
+|---|---|
+| Saber qué hace hoy el sistema | `openspec/specs/<capacidad>/spec.md` |
+| Ver qué se propone cambiar | `openspec/changes/<cambio>/` |
+| Conocer vocabulario y decisiones transversales | `openspec/config.yaml`, bloque `context` |
+| Consultar una spec vieja | `specs/legacy/` |
 
-- Plataforma: .NET 10, ASP.NET Core, Blazor y Clean Architecture.
-- Persistencia oficial: SQL Server con EF Core, migraciones y transacciones.
-- SQLite es opcional únicamente para pruebas, prototipos o un buffer local de interacciones. No es fuente de verdad para sesiones, resultados, auditoría ni datos experimentales.
-- Identificadores: `Guid` para entidades; `SessionCode` con formato `EXP-{8}`.
-- Tiempo: UTC en persistencia y contratos ISO 8601.
-- Condiciones: `Human` e `AI`. El cliente puede solicitar una preferencia, pero el backend decide y persiste la asignación.
-- Semántica de condición: `Human` indica interlocutor humano; `AI` indica respuesta generada por IA. No representa tipo de avatar ni proveedor emocional.
-- Ciclo de cierre: `POST /api/sessions/{id}/complete` para cierre normal; el scheduler usa `TimedOut`; un administrador usa `Cancelled`.
-- Fallos externos: se persisten como `DegradedEvent` con sesión, operación, código, mensaje seguro, timestamp y posibilidad de reintento.
-- Si una interacción se almacena temporalmente en SQLite, debe sincronizarse con SQL Server y marcarse como confirmada; una interacción no sincronizada no cuenta como dato experimental válido.
-- API: `src/turning.Web` nunca accede directamente a base de datos, repositorios o proveedores externos.
-- Eliminación: los registros experimentales son inmutables durante el ensayo; cualquier corrección debe quedar auditada.
-- Alcance de la primera entrega: bootstrap de sesión, conversación persistida, asignación, emociones simuladas, avatar derivado, encuesta y consulta de resultados. Integraciones reales con OpenAI/Hume y WebSocket quedan detrás de puertos y adaptadores.
+## Flujo de trabajo
 
-## Convenciones de contrato
+```
+/opsx:explore    entender el problema y el código
+/opsx:propose    redactar proposal.md, specs/, design.md, tasks.md
+/opsx:apply      implementar las tareas
+/opsx:archive    archivar el cambio y volcar sus deltas a openspec/specs/
+```
 
-- Sesión creada: `POST /api/sessions` → `201 Created`.
-- Sesión activa: `POST /api/sessions/{id}/activate`.
-- Estado: `GET /api/sessions/{id}`.
-- Recursos hijos siempre incluyen `sessionId` y no pueden existir sin una sesión válida.
-- Errores: `400` entrada inválida, `401/403` autenticación/autorización, `404` recurso inexistente, `409` conflicto de estado o concurrencia, `422` regla de negocio, `503` proveedor externo no disponible.
+Validar todo: `openspec validate --all`
+
+## Capacidades
+
+| Capacidad | Reemplaza a |
+|---|---|
+| `session-lifecycle` | 002 |
+| `condition-assignment` | 003 |
+| `conversation-turns` | 007 (parte de conversación) |
+| `emotion-readings` | 004 |
+| `avatar-expression` | 005 |
+| `survey` | 006 |
+| `experiment-results` | 008 |
+| `realtime-events` | 009 |
+| `authentication` | — (no tenía spec) |
+
+El contenido normativo de 001 no era una capacidad sino vocabulario y decisiones
+transversales: vive ahora en el bloque `context` de `openspec/config.yaml`.
+
+## Cambios en curso
+
+| Cambio | Qué resuelve |
+|---|---|
+| `harden-session-ownership-filter` | Cubre con pruebas el filtro de aislamiento y le quita la dependencia del nombre de parámetro |
+| `restrict-role-assignment` | El registro público deja de conceder `Researcher` y `Administrator` |
+| `add-session-metrics` | RF-SES-09: métricas agregadas de sesiones |
+| `add-activation-preconditions` | RF-SES-10: validar precondiciones antes de activar |
+| `add-batch-cancel` | RF-SES-07: cancelación en lote |
