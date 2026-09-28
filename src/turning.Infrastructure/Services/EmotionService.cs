@@ -26,8 +26,8 @@ public sealed class EmotionService : IEmotionService
             }
             catch
             {
-                reading = EmotionReading.Create(sessionId, "neutral", 0.3, req.Source??"video", "fallback");
-                typeof(EmotionReading).GetProperty("IsDegraded")!.SetValue(reading, true);
+                reading = EmotionReading.Create(sessionId, EmotionLabel.Neutral, EmotionLabel.FallbackIntensity, req.Source??"video", "fallback");
+                reading.MarkDegraded();
                 _db.ExperimentEvents.Add(ExperimentEvent.Create(sessionId, "DegradedOperation", $"{{\"operation\":\"EmotionAnalysis\",\"provider\":\"{_port.GetType().Name}\"}}"));
             }
         }

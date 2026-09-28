@@ -36,4 +36,38 @@ public interface IExperimentSessionService
     /// aplicar el mismo aislamiento sin reimplementar la regla en cada controller.
     /// </summary>
     Task<bool> IsSessionAccessibleAsync(Guid sessionId, Guid requestingUserId, bool isPrivilegedRequester, CancellationToken ct = default);
+
+    /// <summary>
+    /// Resuelve que puede hacer un usuario sobre una sesion.
+    /// </summary>
+    /// <remarks>
+    /// Devuelve <see cref="SessionAccessLevel.None"/> tanto si la sesion no existe como si
+    /// el usuario no tiene nada que ver con ella: el llamante no debe poder distinguirlo.
+    /// </remarks>
+    Task<SessionAccessLevel> GetAccessLevelAsync(Guid sessionId, Guid requestingUserId, bool isPrivilegedRequester, CancellationToken ct = default);
+
+    /// <summary>
+    /// Une al usuario a una sesion Human como interlocutor, a partir del codigo de sesion.
+    /// </summary>
+    /// <remarks>
+    /// Recibe el codigo y no el identificador a proposito: quien se une todavia no tiene
+    /// acceso a la sesion, asi que una ruta con {sessionId} la cortaria el filtro de
+    /// aislamiento antes de llegar aqui.
+    /// </remarks>
+    Task<ExperimentSessionSnapshot> JoinAsInterlocutorAsync(string sessionCode, Guid interlocutorUserId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Asigna explicitamente un interlocutor a una sesion. Solo para roles privilegiados.
+    /// </summary>
+    Task<ExperimentSessionSnapshot> AssignInterlocutorAsync(Guid sessionId, Guid interlocutorUserId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Libera al interlocutor de una sesion. Solo para roles privilegiados.
+    /// </summary>
+    Task<ExperimentSessionSnapshot> ReleaseInterlocutorAsync(Guid sessionId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Lista las sesiones Human que todavia esperan interlocutor.
+    /// </summary>
+    Task<PagedSessionsResult> ListAwaitingInterlocutorAsync(int page, int pageSize, CancellationToken ct = default);
 }

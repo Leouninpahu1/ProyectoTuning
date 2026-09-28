@@ -34,8 +34,17 @@ public static class DependencyInjectionExtensions
         services.AddScoped<ISampleRepository, InMemorySampleRepository>();
         services.AddScoped<IExperimentSessionRepository, ExperimentSessionRepository>();
         services.AddScoped<IAssignmentService, Services.BalancedAssignmentService>();
-        services.AddScoped<ITextGenerationPort, RuleBasedTextGenerationAdapter>();
+        // El adaptador por reglas ya no es el puerto: pasa a ser el ultimo eslabon de la
+        // cadena que arma AddAiTextGeneration en la API, que es quien registra
+        // ITextGenerationPort. Se registra la clase concreta para que ese eslabon la reciba.
+        services.AddScoped<RuleBasedTextGenerationAdapter>();
         services.AddScoped<IEmotionAnalysisPort, AI.MockEmotionAnalysisAdapter>();
+        services.AddScoped<IEmotionReadingRepository, EmotionReadingRepository>();
+        services.AddScoped<IExperimentEventPublisher, Services.ExperimentEventPublisher>();
+
+        // El lexico se lee del ensamblado una sola vez; el analizador no tiene estado.
+        services.AddSingleton<Turning.Domain.Emotions.IEmotionLexicon, AI.Lexicon.EmbeddedJsonEmotionLexicon>();
+        services.AddSingleton<Turning.Domain.Emotions.TextEmotionAnalyzer>();
         services.AddScoped<Turning.Application.Features.Emotions.IEmotionService, Services.EmotionService>();
         services.AddScoped<Turning.Application.Features.Emotions.IAvatarService, Services.AvatarService>();
         services.AddScoped<Turning.Application.Features.Surveys.ISurveyService, Services.SurveyAppService>();

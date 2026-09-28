@@ -1,10 +1,13 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Turning.Application.Features.Events;
+using Turning.API.Filters;
+
 namespace Turning.API.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/sessions/{sessionId:guid}/events")]
+[AllowSessionInterlocutor]
 public sealed class EventsController : ControllerBase
 {
     private readonly IEventService _svc;

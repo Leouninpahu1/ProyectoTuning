@@ -34,4 +34,10 @@ public sealed class ConversationTurnSnapshot
     /// Fecha de creación del turno en UTC.
     /// </summary>
     public DateTime CreatedAtUtc { get; init; }
+
+    /// <summary>
+    /// Turno que provocó este mensaje. Solo viene informado en la respuesta del
+    /// interlocutor, y permite al cliente enlazar pregunta y respuesta.
+    /// </summary>
+    public Guid? OriginatingTurnId { get; init; }
 }

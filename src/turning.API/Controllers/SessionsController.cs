@@ -129,6 +129,7 @@ public sealed class SessionsController : ControllerBase
     /// <response code="404">La sesión no existe, o existe y es ajena: <c>SESSION_NOT_FOUND</c> en ambos casos.</response>
     /// <response code="401">Falta el token o no trae un identificador de usuario válido.</response>
     [HttpGet("{id:guid}")]
+    [Turning.API.Filters.AllowSessionInterlocutor]
     [ProducesResponseType(typeof(ExperimentSessionSnapshot), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
