@@ -36,7 +36,7 @@
     {
         <!-- Header bienvenida -->
         <header class="sue-header">
-            
+            <p class="sue-eyebrow">◦ Tu jardín emocional</p>
             <h1 class="sue-title">Hola, @GetFirstName()</h1>
             <p class="sue-subtitle">Hoy es un buen día para conectar contigo mismo.</p>
         </header>
@@ -105,15 +105,8 @@
                 <h2 class="sue-card-title">Crear tu primera sesión experimental</h2>
                 <p class="sue-subtitle" style="margin-bottom: 20px;">
                     Esto crea una sesión persistida que servirá como base para conversaciones, emociones y el avatar.
+                    El sistema asignará automáticamente cómo se desarrollará la experiencia.
                 </p>
-
-                <div class="sue-form-field">
-                    <label class="sue-form-label">Condición experimental</label>
-                    <select class="input-tierra" @bind="_preferredCondition">
-                        <option value="AI">IA</option>
-                        <option value="Human">Humano</option>
-                    </select>
-                </div>
 
                 <button class="btn-tierra" style="max-width: 320px; margin-top: 16px;"
                         @onclick="HandleCreateSessionAsync" disabled="@_isCreatingSession">
@@ -139,10 +132,6 @@
                         <p class="sue-info-value">@_session.SessionCode</p>
                     </div>
                     <div>
-                        <p class="sue-info-label">Condición</p>
-                        <p class="sue-info-value">@_session.Condition</p>
-                    </div>
-                    <div>
                         <p class="sue-info-label">Estado</p>
                         <p class="sue-info-value">@_session.Status</p>
                     </div>
@@ -162,68 +151,12 @@
                         <p class="sue-info-label">Creada</p>
                         <p class="sue-info-value">@_session.CreatedAtUtc.ToLocalTime().ToString("g")</p>
                     </div>
-                    <div>
-                        <p class="sue-info-label">Siguiente paso</p>
-                        <p class="sue-info-value">@_session.AvatarStage</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Chat -->
-            <div class="sue-card">
-                <p class="sue-eyebrow">Conversación</p>
-                <h2 class="sue-card-title" style="margin-bottom: 20px;">Habla con SUE</h2>
-
-                @if (IsAiCondition)
-                {
-                    <p class="sue-info-label" style="margin-bottom: 16px;">
-                        Sesión IA activa · cada mensaje tuyo genera una respuesta automática.
-                    </p>
-                }
-
-                <div class="sue-chat-feed">
-                    @if (_conversationTurns.Count == 0)
-                    {
-                        <div class="sue-chat-empty">
-                            Aún no hay mensajes. Escribe el primero para comenzar.
-                        </div>
-                    }
-                    else
-                    {
-                        @foreach (var turn in _conversationTurns)
-                        {
-                            <div class="@GetConversationTurnCss(turn)">
-                                <div class="sue-chat-meta">
-                                    <span>@turn.Sender</span>
-                                    <span>@turn.CreatedAtUtc.ToLocalTime().ToString("HH:mm")</span>
-                                </div>
-                                <p>@turn.Message</p>
-                            </div>
-                        }
-                    }
                 </div>
 
-                <div style="margin-top: 20px;">
-                    @if (!IsAiCondition)
-                    {
-                        <div class="sue-form-field">
-                            <label class="sue-form-label">Emisor</label>
-                            <select class="input-tierra" @bind="_conversationSender">
-                                <option value="Participant">Participante</option>
-                                <option value="Interlocutor">Interlocutor</option>
-                            </select>
-                        </div>
-                    }
-
-                    <div class="sue-form-field">
-                        <label class="sue-form-label">Mensaje</label>
-                        <textarea class="input-tierra" rows="3" placeholder="¿Qué hay en tu corazón hoy?"
-                                  @bind="_draftMessage"></textarea>
-                    </div>
-
-                    <button class="btn-tierra" style="margin-top: 12px;"
-                            @onclick="HandleAddConversationTurnAsync" disabled="@_isSubmittingTurn">
-                        @(_isSubmittingTurn ? "Guardando..." : "· Enviar mensaje")
+                <div style="margin-top: 24px;">
+                    <button class="btn-tierra" style="max-width: 320px;"
+                            @onclick="GoToConversations">
+                        · Ir a la conversación
                     </button>
                 </div>
             </div>
@@ -237,12 +170,8 @@
     private List<ConversationTurnSnapshotDto> _conversationTurns = new();
     private bool _isLoading = true;
     private bool _isCreatingSession;
-    private bool _isSubmittingTurn;
     private string? _errorMessage;
     private string _tokenExpiryLabel = "No disponible";
-    private string _preferredCondition = "AI";
-    private string _conversationSender = "Participant";
-    private string _draftMessage = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
@@ -269,7 +198,8 @@
 
             if (_session is not null)
             {
-                await LoadConversationAsync(_session.Id);
+                var turns = await ExperimentSessionApiClient.GetConversationTurnsAsync(_session.Id);
+                _conversationTurns = new List<ConversationTurnSnapshotDto>(turns);
             }
             else
             {
@@ -298,14 +228,13 @@
 
         try
         {
+            // Ya no enviamos PreferredCondition — el backend decide
             _session = await ExperimentSessionApiClient.CreateBootstrapAsync(new CreateExperimentSessionRequestDto
             {
-                PreferredCondition = _preferredCondition
+                PreferredCondition = "Auto"
             });
 
             _conversationTurns.Clear();
-            _draftMessage = string.Empty;
-            _conversationSender = "Participant";
         }
         catch (ApiException exception) when (exception.StatusCode == HttpStatusCode.Unauthorized)
         {
@@ -322,57 +251,10 @@
         }
     }
 
-    private async Task LoadConversationAsync(Guid sessionId)
+    private void GoToConversations()
     {
-        var turns = await ExperimentSessionApiClient.GetConversationTurnsAsync(sessionId);
-        _conversationTurns = new List<ConversationTurnSnapshotDto>(turns);
+        NavigationManager.NavigateTo("/conversations");
     }
-
-    private async Task HandleAddConversationTurnAsync()
-    {
-        if (_session is null || string.IsNullOrWhiteSpace(_draftMessage))
-        {
-            return;
-        }
-
-        _isSubmittingTurn = true;
-        _errorMessage = null;
-
-        try
-        {
-            await ExperimentSessionApiClient.AddConversationTurnAsync(_session.Id, new AddConversationTurnRequestDto
-            {
-                Sender = IsAiCondition ? "Participant" : _conversationSender,
-                Message = _draftMessage
-            });
-
-            await LoadConversationAsync(_session.Id);
-            _draftMessage = string.Empty;
-            _session = await ExperimentSessionApiClient.GetLatestAsync();
-        }
-        catch (ApiException exception) when (exception.StatusCode == HttpStatusCode.Unauthorized)
-        {
-            await AuthStateProvider.SignOutAsync();
-            NavigationManager.NavigateTo("/login?returnUrl=%2Fworkspace", replace: true);
-        }
-        catch (ApiException exception)
-        {
-            _errorMessage = exception.Message;
-        }
-        finally
-        {
-            _isSubmittingTurn = false;
-        }
-    }
-
-    private static string GetConversationTurnCss(ConversationTurnSnapshotDto turn)
-    {
-        return string.Equals(turn.Sender, "Interlocutor", StringComparison.OrdinalIgnoreCase)
-            ? "sue-chat-bubble sue-chat-sue"
-            : "sue-chat-bubble sue-chat-user";
-    }
-
-    private bool IsAiCondition => string.Equals(_session?.Condition, "AI", StringComparison.OrdinalIgnoreCase);
 
     private static string ResolveExpiry(ClaimsPrincipal user)
     {

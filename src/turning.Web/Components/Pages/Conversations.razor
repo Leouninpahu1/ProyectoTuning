@@ -8,13 +8,13 @@
 @inject NavigationManager NavigationManager
 @inject TokenAuthenticationStateProvider AuthStateProvider
 
-<PageTitle>SUE — Conversaciones Emocionales</PageTitle>
+<PageTitle>SUE — Conversación</PageTitle>
 
 <div class="sue-page">
     <header class="sue-header">
-        <p class="sue-eyebrow">· Conversaciones</p>
-        <h1 class="sue-title">Conversación Emocional</h1>
-        <p class="sue-subtitle">Un espacio cálido para conversar con SUE.</p>
+        <p class="sue-eyebrow">· Conversación</p>
+        <h1 class="sue-title">Habla con SUE</h1>
+        <p class="sue-subtitle">Un espacio cálido para conversar y explorar lo que sientes.</p>
     </header>
 
     @if (_isLoading)
@@ -35,7 +35,7 @@
             <div style="font-size: 48px; margin-bottom: 16px;">·</div>
             <h2 class="sue-card-title">Necesitas una sesión activa</h2>
             <p class="sue-subtitle" style="margin-bottom: 24px;">
-                Crea una sesión primero para comenzar a conversar con SUE.
+                Crea una sesión primero para comenzar a conversar.
             </p>
             <button class="btn-tierra" style="max-width: 280px; margin: 0 auto;" @onclick="GoToWorkspace">
                 ◦ Crear sesión
@@ -55,7 +55,7 @@
                         <p style="margin: 0; font-weight: 800; color: var(--barro);">SUE</p>
                         <p style="margin: 2px 0 0; font-size: 12px; color: var(--barro-claro); display: flex; align-items: center; gap: 6px;">
                             <span class="pulse-dot" style="width: 8px; height: 8px; border-radius: 50%; background: var(--salvia-oscura); display: inline-block;"></span>
-                            Escuchando
+                            @(_isWaitingReply ? "Escribiendo..." : "Escuchando")
                         </p>
                     </div>
                 </div>
@@ -72,7 +72,7 @@
                 @if (_turns.Count == 0)
                 {
                     <div class="sue-chat-empty">
-                        Aún no hay mensajes. Escribe el primero para comenzar tu conversación con SUE.
+                        Aún no hay mensajes. Escribe el primero para comenzar tu conversación.
                     </div>
                 }
                 else
@@ -81,22 +81,23 @@
                     {
                         <div class="@GetCss(turn)">
                             <div class="sue-chat-meta">
-                                <span>@turn.Sender</span>
+                                <span>@(turn.Sender == "Interlocutor" ? "SUE" : "Tú")</span>
                                 <span>@turn.CreatedAtUtc.ToLocalTime().ToString("HH:mm")</span>
                             </div>
                             <p>@turn.Message</p>
                         </div>
                     }
-                    @if (_isSending)
-                    {
-                        <div class="sue-chat-bubble sue-chat-sue">
-                            <div class="sue-chat-meta">
-                                <span>SUE</span>
-                                <span>escribiendo...</span>
-                            </div>
-                            <p>● ● ●</p>
+                }
+
+                @if (_isWaitingReply)
+                {
+                    <div class="sue-chat-bubble sue-chat-sue">
+                        <div class="sue-chat-meta">
+                            <span>SUE</span>
+                            <span>escribiendo...</span>
                         </div>
-                    }
+                        <p style="letter-spacing: 4px;">● ● ●</p>
+                    </div>
                 }
             </div>
 
@@ -135,6 +136,7 @@
     private List<ConversationTurnSnapshotDto> _turns = new();
     private bool _isLoading = true;
     private bool _isSending;
+    private bool _isWaitingReply;
     private string? _errorMessage;
     private string _draftMessage = string.Empty;
 
@@ -174,49 +176,67 @@
     }
 
     private async Task SendAsync()
+{
+    if (_session is null || string.IsNullOrWhiteSpace(_draftMessage))
     {
-        if (_session is null || string.IsNullOrWhiteSpace(_draftMessage))
-        {
-            return;
-        }
-
-        _isSending = true;
-        _errorMessage = null;
-
-        try
-        {
-            var isAi = string.Equals(_session.Condition, "AI", StringComparison.OrdinalIgnoreCase);
-
-            await ExperimentSessionApiClient.AddConversationTurnAsync(_session.Id, new AddConversationTurnRequestDto
-            {
-                Sender = "Participant",
-                Message = _draftMessage.Trim()
-            });
-
-            _draftMessage = string.Empty;
-            await LoadAsync();
-
-            if (isAi && _turns.Count > 0)
-            {
-                // Refresca tras la respuesta automática del interlocutor
-                await Task.Delay(600);
-                await LoadAsync();
-            }
-        }
-        catch (ApiException exception) when (exception.StatusCode == HttpStatusCode.Unauthorized)
-        {
-            await AuthStateProvider.SignOutAsync();
-            NavigationManager.NavigateTo("/login?returnUrl=%2Fconversations", replace: true);
-        }
-        catch (ApiException exception)
-        {
-            _errorMessage = exception.Message;
-        }
-        finally
-        {
-            _isSending = false;
-        }
+        return;
     }
+
+    _isSending = true;
+    _errorMessage = null;
+
+    var messageToSend = _draftMessage.Trim();
+    var turnsBefore = _turns.Count;
+
+    // ✅ Optimista: mostrar el mensaje del usuario INMEDIATAMENTE
+    _turns.Add(new ConversationTurnSnapshotDto
+    {
+        Id = Guid.NewGuid(),
+        SessionId = _session.Id,
+        SequenceNumber = turnsBefore + 1,
+        Sender = "Participant",
+        Message = messageToSend,
+        CreatedAtUtc = DateTime.UtcNow
+    });
+
+    _draftMessage = string.Empty;
+    _isSending = false;
+    _isWaitingReply = true;
+    StateHasChanged();
+
+    try
+    {
+        // Enviamos el mensaje al backend (esto puede tardar por el delay humano)
+        await ExperimentSessionApiClient.AddConversationTurnAsync(_session.Id, new AddConversationTurnRequestDto
+        {
+            Sender = "Participant",
+            Message = messageToSend
+        });
+
+        // Una vez que el backend terminó, recargamos para traer ambos turnos reales
+        var turns = await ExperimentSessionApiClient.GetConversationTurnsAsync(_session.Id);
+        _turns = new List<ConversationTurnSnapshotDto>(turns);
+        _session = await ExperimentSessionApiClient.GetLatestAsync();
+
+        _isWaitingReply = false;
+        StateHasChanged();
+    }
+    catch (ApiException exception) when (exception.StatusCode == HttpStatusCode.Unauthorized)
+    {
+        await AuthStateProvider.SignOutAsync();
+        NavigationManager.NavigateTo("/login?returnUrl=%2Fconversations", replace: true);
+    }
+    catch (ApiException exception)
+    {
+        _errorMessage = exception.Message;
+        _isWaitingReply = false;
+    }
+    finally
+    {
+        _isSending = false;
+        _isWaitingReply = false;
+    }
+}
 
     private void UseSuggestion(string text)
     {
