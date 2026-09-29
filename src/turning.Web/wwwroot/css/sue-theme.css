@@ -1402,3 +1402,21 @@ button {
 	.sue-landing-footer p {
 		margin: 4px 0;
 	}
+/* ============================================
+   Logo SUE en círculos
+   ============================================ */
+.sue-avatar-logo {
+	width: 75%;
+	height: 75%;
+	object-fit: contain;
+	/* Mezcla el fondo blanco del logo con el gradiente del círculo */
+	mix-blend-mode: multiply;
+	/* Si el resultado se ve muy oscuro, prueba con: opacity: 0.9; */
+}
+
+.sue-landing-avatar-logo {
+	width: 70%;
+	height: 70%;
+	object-fit: contain;
+	mix-blend-mode: multiply;
+}
