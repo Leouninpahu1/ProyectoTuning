@@ -61,6 +61,16 @@ public sealed class AiProviderOptions
     public double Temperature { get; set; } = 0.7;
 
     /// <summary>
+    /// Envía <c>reasoning: {enabled: false}</c> para apagar el razonamiento del modelo.
+    /// </summary>
+    /// <remarks>
+    /// Solo aplica a OpenRouter. Sus modelos gratuitos de razonamiento gastan
+    /// <see cref="MaxOutputTokens"/> pensando y devuelven <c>content</c> nulo. OpenAI no
+    /// conoce el parámetro, por eso es opcional y viene apagado.
+    /// </remarks>
+    public bool DisableReasoning { get; set; }
+
+    /// <summary>
     /// Cabecera <c>HTTP-Referer</c> que OpenRouter usa para atribuir el tráfico. Opcional.
     /// </summary>
     public string? HttpReferer { get; set; }
