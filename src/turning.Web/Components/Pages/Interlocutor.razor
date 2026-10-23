@@ -1,0 +1,221 @@
+@page "/interlocutor"
+@attribute [Authorize(Roles = "Administrator,Researcher")]
+
+@using System.Net
+@using System.Security.Claims
+@using turning.Web.ExperimentSessions
+
+@implements IDisposable
+@inject ExperimentSessionApiClient ExperimentSessionApiClient
+@inject NavigationManager NavigationManager
+@inject TokenAuthenticationStateProvider AuthStateProvider
+
+<PageTitle>SUE — Responder participantes</PageTitle>
+
+<div class="sue-page">
+    <header class="sue-header">
+        <p class="sue-eyebrow">· Interlocutor</p>
+        <h1 class="sue-title">Responder participantes</h1>
+        <p class="sue-subtitle">Toma una sesión en condición Human y responde a su conversación. Se actualiza cada 4 segundos.</p>
+    </header>
+
+    @if (!string.IsNullOrWhiteSpace(_errorMessage))
+    {
+        <div class="sue-card">
+            <p class="sue-info-value" style="color: #A87B64;">@_errorMessage</p>
+        </div>
+    }
+
+    <div class="sue-two-cols">
+        <div class="sue-card">
+            <h2 class="sue-card-title">Esperando interlocutor</h2>
+            @if (_awaiting.Count == 0)
+            {
+                <p class="sue-subtitle">No hay sesiones en espera.</p>
+            }
+            @foreach (var session in _awaiting)
+            {
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(212, 184, 167, 0.3);">
+                    <div>
+                        <p class="sue-info-value" style="margin: 0;">@session.SessionCode</p>
+                        <p class="sue-info-label" style="margin: 2px 0 0;">@session.ConversationTurnCount mensajes · @session.CreatedAtUtc.ToLocalTime().ToString("g")</p>
+                    </div>
+                    <button class="btn-tierra" style="width: auto; padding: 8px 18px;" @onclick="() => JoinAsync(session.SessionCode)">Tomar</button>
+                </div>
+            }
+
+            <h2 class="sue-card-title" style="margin-top: 28px;">Mis sesiones</h2>
+            @if (_mine.Count == 0)
+            {
+                <p class="sue-subtitle">Aún no atiendes ninguna sesión.</p>
+            }
+            @foreach (var session in _mine)
+            {
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(212, 184, 167, 0.3);">
+                    <div>
+                        <p class="sue-info-value" style="margin: 0;">@session.SessionCode</p>
+                        <p class="sue-info-label" style="margin: 2px 0 0;">@session.Status · @(session.LastDetectedEmotion ?? "sin emoción")</p>
+                    </div>
+                    <button class="@(session.Id == _selected?.Id ? "btn-tierra" : "btn-ghost")" style="width: auto; padding: 8px 18px;" @onclick="() => SelectAsync(session)">Abrir</button>
+                </div>
+            }
+        </div>
+
+        <div class="sue-card" style="padding: 0; overflow: hidden;">
+            @if (_selected is null)
+            {
+                <div class="sue-chat-empty" style="padding: 60px 20px;">Toma o abre una sesión para ver su conversación.</div>
+            }
+            else
+            {
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid rgba(212, 184, 167, 0.3); flex-wrap: wrap; gap: 12px;">
+                    <p style="margin: 0; font-weight: 800; color: var(--barro);">@_selected.SessionCode</p>
+                    @if (!string.IsNullOrWhiteSpace(_selected.LastDetectedEmotion))
+                    {
+                        <span style="padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: 800; background: rgba(181,196,177,0.4); color: var(--salvia-oscura);">
+                            Participante: @_selected.LastDetectedEmotion
+                        </span>
+                    }
+                </div>
+
+                <div class="sue-chat-feed" style="padding: 24px; min-height: 360px; max-height: 480px;">
+                    @if (_turns.Count == 0)
+                    {
+                        <div class="sue-chat-empty">El participante aún no ha escrito.</div>
+                    }
+                    @foreach (var turn in _turns)
+                    {
+                        <div class="@(turn.Sender == "Interlocutor" ? "sue-chat-bubble sue-chat-user" : "sue-chat-bubble sue-chat-sue")">
+                            <div class="sue-chat-meta">
+                                <span>@(turn.Sender == "Interlocutor" ? "Tú" : "Participante")</span>
+                                <span>@turn.CreatedAtUtc.ToLocalTime().ToString("HH:mm")</span>
+                            </div>
+                            <p>@turn.Message</p>
+                        </div>
+                    }
+                </div>
+
+                <div style="padding: 20px 24px; border-top: 1px solid rgba(212, 184, 167, 0.3); background: var(--blanco-roto); display: flex; gap: 12px; flex-wrap: wrap;">
+                    <textarea class="input-tierra" rows="2" placeholder="Escribe tu respuesta"
+                              style="flex: 1; min-width: 200px; resize: none;"
+                              @bind="_draft" @bind:event="oninput" disabled="@_isSending"></textarea>
+                    <button class="btn-tierra" style="width: auto; padding: 12px 28px; align-self: flex-end;"
+                            @onclick="SendAsync" disabled="@(_isSending || string.IsNullOrWhiteSpace(_draft))">
+                        @(_isSending ? "..." : "· Enviar")
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<ExperimentSessionSnapshotDto> _awaiting = new();
+    private List<ExperimentSessionSnapshotDto> _mine = new();
+    private List<ConversationTurnSnapshotDto> _turns = new();
+    private ExperimentSessionSnapshotDto? _selected;
+    private Guid _myId;
+    private string _draft = string.Empty;
+    private string? _errorMessage;
+    private bool _isSending;
+    private bool _isRefreshing;
+    private Timer? _timer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        Guid.TryParse(state.User.FindFirstValue(ClaimTypes.NameIdentifier), out _myId);
+
+        await RefreshAsync();
+        _timer = new Timer(_ => InvokeAsync(RefreshAsync), null, TimeSpan.FromSeconds(4), TimeSpan.FromSeconds(4));
+    }
+
+    private async Task RefreshAsync()
+    {
+        if (_isRefreshing) return;
+
+        _isRefreshing = true;
+
+        try
+        {
+            _awaiting = (await ExperimentSessionApiClient.ListAwaitingInterlocutorAsync()).Items;
+
+            var all = (await ExperimentSessionApiClient.ListSessionsAsync()).Items;
+            _mine = all.Where(s => s.InterlocutorUserId == _myId && s.Status is "Created" or "Active").ToList();
+
+            if (_selected is not null)
+            {
+                _selected = _mine.FirstOrDefault(s => s.Id == _selected.Id) ?? _selected;
+                _turns = new List<ConversationTurnSnapshotDto>(await ExperimentSessionApiClient.GetConversationTurnsAsync(_selected.Id));
+            }
+
+            _errorMessage = null;
+        }
+        catch (ApiException exception) when (exception.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            await AuthStateProvider.SignOutAsync();
+            NavigationManager.NavigateTo("/login?returnUrl=%2Finterlocutor", replace: true);
+        }
+        catch (ApiException exception)
+        {
+            _errorMessage = exception.Message;
+        }
+        finally
+        {
+            _isRefreshing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task JoinAsync(string sessionCode)
+    {
+        try
+        {
+            _selected = await ExperimentSessionApiClient.JoinAsInterlocutorAsync(sessionCode);
+            _errorMessage = null;
+        }
+        catch (ApiException exception)
+        {
+            _errorMessage = exception.Message;
+        }
+
+        await RefreshAsync();
+    }
+
+    private async Task SelectAsync(ExperimentSessionSnapshotDto session)
+    {
+        _selected = session;
+        await RefreshAsync();
+    }
+
+    private async Task SendAsync()
+    {
+        if (_selected is null || string.IsNullOrWhiteSpace(_draft)) return;
+
+        _isSending = true;
+
+        try
+        {
+            await ExperimentSessionApiClient.AddConversationTurnAsync(_selected.Id, new AddConversationTurnRequestDto
+            {
+                Sender = "Interlocutor",
+                Message = _draft.Trim()
+            });
+
+            _draft = string.Empty;
+            _errorMessage = null;
+        }
+        catch (ApiException exception)
+        {
+            _errorMessage = exception.Message;
+        }
+        finally
+        {
+            _isSending = false;
+        }
+
+        await RefreshAsync();
+    }
+
+    public void Dispose() => _timer?.Dispose();
+}

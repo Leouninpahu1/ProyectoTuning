@@ -1,0 +1,211 @@
+@page "/admin"
+@attribute [Authorize(Roles = "Administrator,Researcher")]
+
+@using System.Net
+@using turning.Web.ExperimentSessions
+
+@implements IDisposable
+@inject ExperimentSessionApiClient ExperimentSessionApiClient
+@inject NavigationManager NavigationManager
+@inject TokenAuthenticationStateProvider AuthStateProvider
+
+<PageTitle>SUE — Panel de Administración</PageTitle>
+
+<div class="sue-page">
+    <header class="sue-header" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px;">
+        <div>
+            <p class="sue-eyebrow">▤ Administración</p>
+            <h1 class="sue-title">Emociones en sesiones activas</h1>
+            <p class="sue-subtitle">Estadísticas en vivo de las sesiones que se están ejecutando. Se actualiza cada 10 segundos.</p>
+        </div>
+        <button class="btn-ghost" style="width: auto; padding: 10px 20px;" @onclick="LoadAsync" disabled="@_isLoading">
+            @(_isLoading ? "Actualizando..." : "Actualizar")
+        </button>
+    </header>
+
+    @if (!string.IsNullOrWhiteSpace(_errorMessage))
+    {
+        <div class="sue-card">
+            <p class="sue-info-value" style="color: #A87B64;">@_errorMessage</p>
+        </div>
+    }
+    else if (_rows is null)
+    {
+        <div class="sue-card">
+            <p class="sue-info-value">Cargando estadísticas...</p>
+        </div>
+    }
+    else
+    {
+        var totalReadings = _totals.Values.Sum();
+
+        <div class="sue-stats-grid">
+            <div class="sue-stat-card">
+                <div class="sue-stat-icon">◦</div>
+                <p class="sue-stat-value">@_rows.Count</p>
+                <p class="sue-stat-label">Sesiones activas</p>
+            </div>
+            <div class="sue-stat-card">
+                <div class="sue-stat-icon">◇</div>
+                <p class="sue-stat-value">@totalReadings</p>
+                <p class="sue-stat-label">Lecturas emocionales</p>
+            </div>
+            <div class="sue-stat-card">
+                <div class="sue-stat-icon">○</div>
+                <p class="sue-stat-value">@(_totals.Count == 0 ? "—" : _totals.MaxBy(x => x.Value).Key)</p>
+                <p class="sue-stat-label">Emoción predominante</p>
+            </div>
+            <div class="sue-stat-card">
+                <div class="sue-stat-icon">≈</div>
+                <p class="sue-stat-value">@_degraded</p>
+                <p class="sue-stat-label">Lecturas degradadas</p>
+            </div>
+        </div>
+
+        <div class="sue-card">
+            <h2 class="sue-card-title">Distribución global</h2>
+            @if (totalReadings == 0)
+            {
+                <p class="sue-subtitle">Aún no hay lecturas emocionales en sesiones activas.</p>
+            }
+            else
+            {
+                <div class="sue-emotions-grid">
+                    @foreach (var (emotion, count) in _totals.OrderByDescending(x => x.Value))
+                    {
+                        var pct = count * 100 / totalReadings;
+                        <div class="sue-emotion-card">
+                            <h3 class="sue-emotion-title">@emotion</h3>
+                            <div class="sue-emotion-bar">
+                                <div class="sue-emotion-fill" style="width: @(pct)%; background: @ColorOf(emotion);"></div>
+                            </div>
+                            <p class="sue-emotion-intensity">@count lecturas · @pct%</p>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        @foreach (var row in _rows)
+        {
+            var rowTotal = row.Counts.Values.Sum();
+
+            <div class="sue-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
+                    <div>
+                        <p class="sue-info-label">Sesión</p>
+                        <h2 class="sue-card-title" style="margin: 4px 0 0;">@row.Session.SessionCode</h2>
+                    </div>
+                    <span style="padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: 800; background: rgba(181,196,177,0.4); color: var(--salvia-oscura);">
+                        • @row.Session.Condition
+                    </span>
+                </div>
+
+                <div class="sue-info-grid">
+                    <div>
+                        <p class="sue-info-label">Última emoción</p>
+                        <p class="sue-info-value">@(row.Session.LastDetectedEmotion ?? "—")</p>
+                    </div>
+                    <div>
+                        <p class="sue-info-label">Mensajes</p>
+                        <p class="sue-info-value">@row.Session.ConversationTurnCount</p>
+                    </div>
+                    <div>
+                        <p class="sue-info-label">Lecturas</p>
+                        <p class="sue-info-value">@rowTotal</p>
+                    </div>
+                    <div>
+                        <p class="sue-info-label">Iniciada</p>
+                        <p class="sue-info-value">@row.Session.CreatedAtUtc.ToLocalTime().ToString("g")</p>
+                    </div>
+                </div>
+
+                @foreach (var (emotion, count) in row.Counts.OrderByDescending(x => x.Value))
+                {
+                    var pct = count * 100 / rowTotal;
+                    <div style="margin-top: 14px;">
+                        <p class="sue-emotion-intensity">@emotion · @count (@pct%)</p>
+                        <div class="sue-emotion-bar">
+                            <div class="sue-emotion-fill" style="width: @(pct)%; background: @ColorOf(emotion);"></div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private sealed record Row(ExperimentSessionSnapshotDto Session, Dictionary<string, int> Counts);
+
+    private static readonly Dictionary<string, string> Colors = new()
+    {
+        ["joy"] = "#E8C9A0", ["neutral"] = "#B5C4B1", ["sadness"] = "#D4B8A7",
+        ["confusion"] = "#D5C4D4", ["anger"] = "#A87B64", ["surprise"] = "#C4957A"
+    };
+
+    private List<Row>? _rows;
+    private Dictionary<string, int> _totals = new();
+    private int _degraded;
+    private bool _isLoading;
+    private string? _errorMessage;
+    private Timer? _timer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+        _timer = new Timer(_ => InvokeAsync(LoadAsync), null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
+    }
+
+    private static string ColorOf(string emotion) => Colors.GetValueOrDefault(emotion.ToLowerInvariant(), "#C4957A");
+
+    private async Task LoadAsync()
+    {
+        if (_isLoading) return;
+
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            var list = await ExperimentSessionApiClient.ListSessionsAsync();
+            var rows = new List<Row>();
+            var totals = new Dictionary<string, int>();
+            var degraded = 0;
+
+            foreach (var session in list.Items.Where(s => s.Status == "Active"))
+            {
+                var result = await ExperimentSessionApiClient.GetSessionResultAsync(session.Id);
+                var counts = result.EmotionReadings.GroupBy(r => r.Emotion).ToDictionary(g => g.Key, g => g.Count());
+                degraded += result.EmotionReadings.Count(r => r.IsDegraded);
+
+                foreach (var (emotion, count) in counts)
+                {
+                    totals[emotion] = totals.GetValueOrDefault(emotion) + count;
+                }
+
+                rows.Add(new Row(session, counts));
+            }
+
+            (_rows, _totals, _degraded) = (rows, totals, degraded);
+        }
+        catch (ApiException exception) when (exception.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            await AuthStateProvider.SignOutAsync();
+            NavigationManager.NavigateTo("/login?returnUrl=%2Fadmin", replace: true);
+        }
+        catch (ApiException exception)
+        {
+            _errorMessage = exception.StatusCode == HttpStatusCode.Forbidden
+                ? "Tu cuenta no tiene permiso para ver estas estadísticas."
+                : exception.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    public void Dispose() => _timer?.Dispose();
+}

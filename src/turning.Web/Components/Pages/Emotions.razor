@@ -1,5 +1,5 @@
 @page "/emotions"
-@attribute [Authorize]
+@attribute [Authorize(Roles = "Administrator,Researcher")]
 
 @using turning.Web.ExperimentSessions
 

@@ -16,14 +16,8 @@
         <NavLink class="sue-nav-item" href="/workspace" Match="NavLinkMatch.All">
             <span class="sue-nav-icon">◦</span> <span class="sue-nav-text">Home</span>
         </NavLink>
-        <NavLink class="sue-nav-item" href="/sessions">
-            <span class="sue-nav-icon">—</span> <span class="sue-nav-text">Sesiones de Experiencia</span>
-        </NavLink>
         <NavLink class="sue-nav-item" href="/conversations">
             <span class="sue-nav-icon">·</span> <span class="sue-nav-text">Conversaciones Emocionales</span>
-        </NavLink>
-        <NavLink class="sue-nav-item" href="/emotions">
-            <span class="sue-nav-icon">◇</span> <span class="sue-nav-text">Lectura de Emociones</span>
         </NavLink>
         <NavLink class="sue-nav-item" href="/surveys">
             <span class="sue-nav-icon">○</span> <span class="sue-nav-text">Encuestas de Bienestar</span>
@@ -31,12 +25,20 @@
         <NavLink class="sue-nav-item" href="/avatar">
             <span class="sue-nav-icon">⌁</span> <span class="sue-nav-text">Avatar SUE</span>
         </NavLink>
-        <NavLink class="sue-nav-item" href="/results">
-            <span class="sue-nav-icon">▤</span> <span class="sue-nav-text">Resultados y Análisis</span>
-        </NavLink>
-        <NavLink class="sue-nav-item" href="/settings">
-            <span class="sue-nav-icon">⚙</span> <span class="sue-nav-text">Configuración</span>
-        </NavLink>
+        <AuthorizeView Roles="Administrator,Researcher">
+            <NavLink class="sue-nav-item" href="/interlocutor">
+                <span class="sue-nav-icon">·</span> <span class="sue-nav-text">Responder participantes</span>
+            </NavLink>
+            <NavLink class="sue-nav-item" href="/admin">
+                <span class="sue-nav-icon">▤</span> <span class="sue-nav-text">Estadísticas en vivo</span>
+            </NavLink>
+            <NavLink class="sue-nav-item" href="/emotions">
+                <span class="sue-nav-icon">◇</span> <span class="sue-nav-text">Lectura de Emociones</span>
+            </NavLink>
+            <NavLink class="sue-nav-item" href="/results">
+                <span class="sue-nav-icon">▤</span> <span class="sue-nav-text">Resultados y Análisis</span>
+            </NavLink>
+        </AuthorizeView>
     </nav>
 
     <!-- Logout -->

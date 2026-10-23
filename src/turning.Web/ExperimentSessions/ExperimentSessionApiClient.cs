@@ -67,6 +67,46 @@ public sealed class ExperimentSessionApiClient
         return await ReadResponseAsync<ConversationTurnSnapshotDto>(response, cancellationToken);
     }
 
+    public async Task<SessionListDto> ListSessionsAsync(int pageSize = 100, CancellationToken cancellationToken = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"api/results?pageSize={pageSize}");
+        AttachAccessToken(request);
+
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
+        return await ReadResponseAsync<SessionListDto>(response, cancellationToken);
+    }
+
+    public async Task<SessionListDto> ListAwaitingInterlocutorAsync(CancellationToken cancellationToken = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "api/sessions/awaiting-interlocutor");
+        AttachAccessToken(request);
+
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
+        return await ReadResponseAsync<SessionListDto>(response, cancellationToken);
+    }
+
+    public async Task<ExperimentSessionSnapshotDto> JoinAsInterlocutorAsync(string sessionCode, CancellationToken cancellationToken = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "api/sessions/join")
+        {
+            Content = JsonContent.Create(new { sessionCode })
+        };
+
+        AttachAccessToken(request);
+
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
+        return await ReadResponseAsync<ExperimentSessionSnapshotDto>(response, cancellationToken);
+    }
+
+    public async Task<SessionResultDto> GetSessionResultAsync(Guid sessionId, CancellationToken cancellationToken = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"api/sessions/{sessionId}/results");
+        AttachAccessToken(request);
+
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
+        return await ReadResponseAsync<SessionResultDto>(response, cancellationToken);
+    }
+
     private void AttachAccessToken(HttpRequestMessage request)
     {
         if (!string.IsNullOrWhiteSpace(_authSession.AccessToken))

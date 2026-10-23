@@ -4,6 +4,7 @@
 @using System.Net
 @using turning.Web.ExperimentSessions
 
+@implements IDisposable
 @inject ExperimentSessionApiClient ExperimentSessionApiClient
 @inject NavigationManager NavigationManager
 @inject TokenAuthenticationStateProvider AuthStateProvider
@@ -140,10 +141,35 @@
     private string? _errorMessage;
     private string _draftMessage = string.Empty;
 
+    private Timer? _pollTimer;
+
     protected override async Task OnInitializedAsync()
     {
         await LoadAsync();
+
+        // En condición Human la respuesta llega cuando el interlocutor la escribe, no al enviar.
+        if (_session?.Condition == "Human")
+        {
+            _pollTimer = new Timer(_ => InvokeAsync(PollTurnsAsync), null, TimeSpan.FromSeconds(4), TimeSpan.FromSeconds(4));
+        }
     }
+
+    private async Task PollTurnsAsync()
+    {
+        if (_session is null || _isSending || _isWaitingReply) return;
+
+        try
+        {
+            _turns = new List<ConversationTurnSnapshotDto>(await ExperimentSessionApiClient.GetConversationTurnsAsync(_session.Id));
+            StateHasChanged();
+        }
+        catch (ApiException)
+        {
+            // El siguiente ciclo reintenta; el error visible queda para las acciones del usuario.
+        }
+    }
+
+    public void Dispose() => _pollTimer?.Dispose();
 
     private async Task LoadAsync()
     {

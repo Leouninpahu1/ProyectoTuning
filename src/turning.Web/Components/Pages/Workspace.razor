@@ -229,10 +229,7 @@
         try
         {
             // Ya no enviamos PreferredCondition — el backend decide
-            _session = await ExperimentSessionApiClient.CreateBootstrapAsync(new CreateExperimentSessionRequestDto
-            {
-                PreferredCondition = "Auto"
-            });
+            _session = await ExperimentSessionApiClient.CreateBootstrapAsync(new CreateExperimentSessionRequestDto());
 
             _conversationTurns.Clear();
         }

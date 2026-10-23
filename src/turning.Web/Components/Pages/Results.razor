@@ -1,5 +1,5 @@
 @page "/results"
-@attribute [Authorize]
+@attribute [Authorize(Roles = "Administrator,Researcher")]
 
 @using System.Net
 @using turning.Web.ExperimentSessions
