@@ -70,4 +70,18 @@ public sealed class AuthController : ControllerBase
         var user = await _authService.GetCurrentUserAsync(userId, cancellationToken);
         return Ok(user);
     }
+
+    [Authorize(Roles = "Administrator")]
+    [HttpPut("users/{userId:guid}/role")]
+    public async Task<ActionResult<AuthenticatedUser>> AssignRole(Guid userId, [FromBody] AssignUserRoleRequest request, CancellationToken ct)
+    {
+        var claim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+        if (!Guid.TryParse(claim, out var actorId) || actorId == Guid.Empty) return Unauthorized();
+        return Ok(await _authService.AssignRoleAsync(actorId, userId, request.Role, ct));
+    }
+}
+
+public sealed class AssignUserRoleRequest
+{
+    public string Role { get; init; } = string.Empty;
 }

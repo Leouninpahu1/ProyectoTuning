@@ -85,7 +85,10 @@ using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<TurningDbContext>();
     dbContext.Database.Migrate();
-    await Turning.Infrastructure.Persistence.TurningDbSeeder.SeedAsync(dbContext);
+    await TurningDbSeeder.SeedAsync(
+        dbContext,
+        scope.ServiceProvider.GetRequiredService<Turning.Application.Interfaces.IPasswordHasherService>(),
+        app.Environment.IsDevelopment());
 }
 
 // Configurar middleware

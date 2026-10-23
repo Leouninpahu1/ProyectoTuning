@@ -39,7 +39,7 @@ public sealed class AuthService : IAuthService
             throw new TurningApplicationException("Ya existe un usuario registrado con ese correo.", "AUTH_USER_ALREADY_EXISTS");
         }
 
-        var provisionalUser = UserAccount.Create(request.Email, request.FullName, "pending", request.Role);
+        var provisionalUser = UserAccount.Create(request.Email, request.FullName, "pending", UserRoles.Participant);
         var passwordHash = _passwordHasherService.HashPassword(provisionalUser, request.Password);
         provisionalUser.UpdatePasswordHash(passwordHash);
         provisionalUser.RecordSuccessfulLogin();
@@ -93,18 +93,29 @@ public sealed class AuthService : IAuthService
         if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 8)
             throw new TurningApplicationException("La contraseña debe tener al menos 8 caracteres.", "AUTH_INVALID_REQUEST");
 
-        if (string.IsNullOrWhiteSpace(request.Role))
-            throw new TurningApplicationException(
-                $"El rol es obligatorio. Roles válidos: {string.Join(", ", UserRoles.All)}.",
-                "AUTH_ROLE_REQUIRED");
-
-        // El registro público acepta por ahora cualquier rol conocido, incluidos
-        // los privilegiados. Restringirlo a Participant está pendiente de acordar
-        // con el equipo: hoy no existe otra vía de crear Researchers para pruebas.
+        if (string.IsNullOrWhiteSpace(request.Role)) return;
         if (!UserRoles.IsKnown(request.Role))
             throw new TurningApplicationException(
                 $"El rol '{request.Role}' no es un rol reconocido. Roles válidos: {string.Join(", ", UserRoles.All)}.",
                 "AUTH_ROLE_UNKNOWN");
+        if (UserRoles.Normalize(request.Role) != UserRoles.Participant)
+            throw new TurningApplicationException("Solo un administrador puede asignar roles privilegiados.", "AUTH_ROLE_FORBIDDEN");
+    }
+
+    public async Task<AuthenticatedUser> AssignRoleAsync(Guid actorId, Guid userId, string role, CancellationToken ct = default)
+    {
+        var actor = await _userAccountRepository.GetByIdAsync(actorId, ct);
+        if (actor?.Role != UserRoles.Administrator)
+            throw new TurningApplicationException("Se requiere un administrador.", "AUTH_FORBIDDEN");
+        if (!UserRoles.IsKnown(role))
+            throw new TurningApplicationException("El rol no es válido.", "AUTH_ROLE_UNKNOWN");
+        var user = await _userAccountRepository.GetByIdAsync(userId, ct)
+            ?? throw new NotFoundException("UserAccount", userId.ToString());
+        if (actorId == userId && UserRoles.Normalize(role) != UserRoles.Administrator)
+            throw new TurningApplicationException("No puedes quitar tu propio acceso de administrador.", "AUTH_ROLE_SELF_CHANGE");
+        user.AssignRole(role);
+        await _userAccountRepository.SaveChangesAsync(ct);
+        return new AuthenticatedUser { Id = user.Id, Email = user.Email, FullName = user.FullName, Role = user.Role };
     }
 
     private static void ValidateLoginRequest(LoginRequest request)

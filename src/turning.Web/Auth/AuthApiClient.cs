@@ -4,85 +4,31 @@ using System.Net.Http.Json;
 
 namespace turning.Web.Auth;
 
-public sealed class AuthApiClient
+public sealed class AuthApiClient(HttpClient httpClient, AuthSession authSession)
 {
-    private readonly HttpClient _httpClient;
-    private readonly AuthSession _authSession;
+    public Task<AuthResultDto> LoginAsync(LoginRequestDto request, CancellationToken cancellationToken = default) =>
+        SendAsync<AuthResultDto>(HttpMethod.Post, "api/auth/login", request, cancellationToken);
 
-    public AuthApiClient(HttpClient httpClient, AuthSession authSession)
+    public Task<AuthResultDto> RegisterAsync(RegisterRequestDto request, CancellationToken cancellationToken = default) =>
+        SendAsync<AuthResultDto>(HttpMethod.Post, "api/auth/register", request, cancellationToken);
+
+    public Task<AuthenticatedUserDto> GetCurrentUserAsync(CancellationToken cancellationToken = default) =>
+        SendAsync<AuthenticatedUserDto>(HttpMethod.Get, "api/auth/me", null, cancellationToken);
+
+    public Task<AuthenticatedUserDto> SetRoleAsync(Guid userId, string role, CancellationToken ct = default) =>
+        SendAsync<AuthenticatedUserDto>(HttpMethod.Put, $"api/auth/users/{userId}/role", new { role }, ct);
+
+    private async Task<T> SendAsync<T>(HttpMethod method, string uri, object? body, CancellationToken ct)
     {
-        _httpClient = httpClient;
-        _authSession = authSession;
-    }
-
-    public Task<AuthResultDto> LoginAsync(LoginRequestDto request, CancellationToken cancellationToken = default)
-    {
-        return SendAsync<LoginRequestDto, AuthResultDto>("api/auth/login", request, cancellationToken);
-    }
-
-    public Task<AuthResultDto> RegisterAsync(RegisterRequestDto request, CancellationToken cancellationToken = default)
-    {
-        return SendAsync<RegisterRequestDto, AuthResultDto>("api/auth/register", request, cancellationToken);
-    }
-
-    public async Task<AuthenticatedUserDto> GetCurrentUserAsync(CancellationToken cancellationToken = default)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Get, "api/auth/me");
-        AttachAccessToken(request);
-
-        using var response = await _httpClient.SendAsync(request, cancellationToken);
-        return await ReadResponseAsync<AuthenticatedUserDto>(response, cancellationToken);
-    }
-
-    private void AttachAccessToken(HttpRequestMessage request)
-    {
-        if (!string.IsNullOrWhiteSpace(_authSession.AccessToken))
-        {
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _authSession.AccessToken);
-        }
-    }
-
-    private async Task<TResponse> SendAsync<TRequest, TResponse>(string uri, TRequest payload, CancellationToken cancellationToken)
-    {
-        using var response = await _httpClient.PostAsJsonAsync(uri, payload, cancellationToken);
-        return await ReadResponseAsync<TResponse>(response, cancellationToken);
-    }
-
-    private static async Task<TResponse> ReadResponseAsync<TResponse>(HttpResponseMessage response, CancellationToken cancellationToken)
-    {
-        if (response.IsSuccessStatusCode)
-        {
-            var result = await response.Content.ReadFromJsonAsync<TResponse>(cancellationToken: cancellationToken);
-            return result ?? throw new ApiException("La API devolvio una respuesta vacia.", response.StatusCode);
-        }
-
-        ApiErrorResponse? apiError = null;
-
-        try
-        {
-            apiError = await response.Content.ReadFromJsonAsync<ApiErrorResponse>(cancellationToken: cancellationToken);
-        }
-        catch
-        {
-        }
-
-        throw new ApiException(
-            apiError?.Message ?? $"No fue posible completar la solicitud ({(int)response.StatusCode}).",
-            response.StatusCode,
-            apiError?.Details);
+        using var request = new HttpRequestMessage(method, uri);
+        if (body is not null) request.Content = JsonContent.Create(body);
+        if (!string.IsNullOrWhiteSpace(authSession.AccessToken)) request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", authSession.AccessToken);
+        return await ApiResponse.SendAsync<T>(httpClient, request, ct);
     }
 }
 
-public sealed class ApiException : Exception
+public sealed class ApiException(string message, HttpStatusCode statusCode, string? details = null) : Exception(message)
 {
-    public ApiException(string message, HttpStatusCode statusCode, string? details = null)
-        : base(message)
-    {
-        StatusCode = statusCode;
-        Details = details;
-    }
-
-    public HttpStatusCode StatusCode { get; }
-
-    public string? Details { get; }
+    public HttpStatusCode StatusCode { get; } = statusCode;
+    public string? Details { get; } = details;
 }

@@ -1,180 +1,102 @@
 @page "/results"
-@attribute [Authorize(Roles = "Administrator,Researcher")]
-
-@using System.Net
+@attribute [Authorize]
 @using turning.Web.ExperimentSessions
-
-@inject ExperimentSessionApiClient ExperimentSessionApiClient
-@inject NavigationManager NavigationManager
-@inject TokenAuthenticationStateProvider AuthStateProvider
+@inject ExperimentSessionApiClient Sessions
 @inject IJSRuntime JS
 
-<PageTitle>SUE — Resultados y Análisis</PageTitle>
-
+<PageTitle>SUE — Resultados</PageTitle>
 <div class="sue-page">
-    <header class="sue-header">
-        <p class="sue-eyebrow">▤ Insights</p>
-        <h1 class="sue-title">Resultados y Análisis</h1>
-        <p class="sue-subtitle">Un resumen visual de tu viaje emocional.</p>
-    </header>
-
-    @if (_isLoading)
+    <header class="sue-header"><p class="sue-eyebrow">Evidencia</p><h1 class="sue-title">Resultados de la sesión</h1><p class="sue-subtitle">Datos registrados durante el experimento, sin indicadores simulados.</p></header>
+    <AuthorizeView Roles="Researcher,Administrator">
+        <div class="sue-card">
+            <h2 class="sue-card-title">Sesiones para investigación</h2>
+            <button class="btn-ghost" disabled="@_loadingList" @onclick="LoadListAsync">Actualizar listado</button>
+            @if (_listError is not null) { <p role="alert">@_listError</p> }
+            @foreach (var session in _all)
+            {
+                <p><a href="/results?sessionId=@session.Id">@session.SessionCode</a> · @session.Condition · @session.Status · @session.CreatedAtUtc.ToLocalTime().ToString("g")</p>
+            }
+            <div style="display:flex;gap:12px;align-items:center"><button class="btn-ghost" disabled="@(_loadingList || _page == 1)" @onclick="PreviousAsync">Anterior</button><span>Página @_page · @_total sesiones</span><button class="btn-ghost" disabled="@(_loadingList || _page * 20 >= _total)" @onclick="NextAsync">Siguiente</button></div>
+        </div>
+    </AuthorizeView>
+    <SessionSelector SessionId="SessionId" OnSelected="LoadAsync" />
+    @if (_error is not null) { <div class="sue-card" role="alert">@_error</div> }
+    @if (_session is not null && !_session.IsTerminal && _session.IsOwner)
+    {
+        <div class="sue-card"><p>El resultado completo estará disponible cuando termine la sesión.</p><a href="/conversations?sessionId=@_session.Id">Volver a la conversación</a></div>
+    }
+    @if (_result is not null)
     {
         <div class="sue-card">
-            <p class="sue-info-value">Cargando análisis...</p>
+            <h2 class="sue-card-title">@_result.Session.SessionCode · @_result.Session.Status</h2>
+            <div class="sue-info-grid"><p>@_result.Conversation.Count mensajes</p><p>@_result.EmotionReadings.Count lecturas emocionales</p><p>@_result.AvatarExpressions.Count expresiones</p><p>@_result.Survey.Count(s => s.SubmittedAtUtc.HasValue) encuestas enviadas</p></div>
+            <AuthorizeView Roles="Researcher,Administrator"><p>Condición experimental: @_result.Session.Condition</p><p>Operaciones degradadas registradas: @_result.DegradedEvents.Count</p></AuthorizeView>
+            <button class="btn-ghost" @onclick="ExportAsync">Descargar datos de esta sesión</button>
         </div>
-    }
-    else if (!string.IsNullOrWhiteSpace(_errorMessage))
-    {
-        <div class="sue-card">
-            <p class="sue-info-value" style="color: #A87B64;">@_errorMessage</p>
+        <div class="sue-card"><h2 class="sue-card-title">Conversación registrada</h2>
+            @if (_result.Conversation.Count == 0) { <p>No se registraron mensajes.</p> }
+            @foreach (var turn in _result.Conversation) { <div style="padding:12px 0;border-bottom:1px solid var(--arena-media)"><p><strong>@(turn.Sender == "Participant" ? "Participante" : "SUE")</strong> · @turn.CreatedAtUtc.ToLocalTime().ToString("g")</p><p>@turn.Message</p></div> }
         </div>
-    }
-    else
-    {
-        <!-- Stat cards -->
-        <div class="sue-stats-grid">
-            <div class="sue-stat-card">
-                <div class="sue-stat-icon">◦</div>
-                <p class="sue-stat-value">@(_session is not null ? "1" : "0")</p>
-                <p class="sue-stat-label">Sesiones totales</p>
-            </div>
-            <div class="sue-stat-card">
-                <div class="sue-stat-icon">◌</div>
-                <p class="sue-stat-value">78%</p>
-                <p class="sue-stat-label">Bienestar promedio</p>
-            </div>
-            <div class="sue-stat-card">
-                <div class="sue-stat-icon">◇</div>
-                <p class="sue-stat-value">@(_session?.LastDetectedEmotion ?? "Calma")</p>
-                <p class="sue-stat-label">Emoción top</p>
-            </div>
-            <div class="sue-stat-card">
-                <div class="sue-stat-icon">○</div>
-                <p class="sue-stat-value">84%</p>
-                <p class="sue-stat-label">Conexión</p>
-            </div>
-        </div>
-
-        <!-- Gráficos -->
         <div class="sue-two-cols">
-            <div class="sue-card">
-                <h2 class="sue-card-title">Emociones de la semana</h2>
-                <div style="margin-top: 20px; height: 300px;">
-                    <canvas id="resultsBar"></canvas>
-                </div>
-            </div>
-
-            <div class="sue-card">
-                <h2 class="sue-card-title">Sesión reciente</h2>
-
-                @if (_session is null)
-                {
-                    <p class="sue-subtitle" style="margin-top: 16px;">
-                        Aún no tienes sesiones registradas.
-                    </p>
-                }
-                else
-                {
-                    <div style="margin-top: 16px; overflow-x: auto;">
-                        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
-                            <thead>
-                                <tr style="border-bottom: 1px solid rgba(212, 184, 167, 0.4); color: var(--barro-claro); text-align: left;">
-                                    <th style="padding: 12px 8px;">Sesión</th>
-                                    <th style="padding: 12px 8px;">Fecha</th>
-                                    <th style="padding: 12px 8px;">Emoción</th>
-                                    <th style="padding: 12px 8px;">Mensajes</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr style="border-bottom: 1px solid rgba(212, 184, 167, 0.2);">
-                                    <td style="padding: 12px 8px; font-weight: 700;">@_session.SessionCode</td>
-                                    <td style="padding: 12px 8px;">@_session.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy")</td>
-                                    <td style="padding: 12px 8px;">@(_session.LastDetectedEmotion ?? "—")</td>
-                                    <td style="padding: 12px 8px;">@_session.ConversationTurnCount</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                }
-
-                <button class="btn-ghost" style="margin-top: 20px; width: auto; padding: 12px 24px;"
-                        @onclick="ExportReportAsync">
-                    ▤ Exportar reporte
-                </button>
-            </div>
+            <div class="sue-card"><h2 class="sue-card-title">Lecturas emocionales</h2>@if (_result.EmotionReadings.Count == 0) { <p>Sin lecturas.</p> }@foreach (var reading in _result.EmotionReadings) { <p>@reading.Emotion · @reading.Score.ToString("P0") · @reading.CapturedAtUtc.ToLocalTime().ToString("g")</p> }</div>
+            <div class="sue-card"><h2 class="sue-card-title">Expresiones derivadas</h2>@if (_result.AvatarExpressions.Count == 0) { <p>Sin expresiones.</p> }@foreach (var avatar in _result.AvatarExpressions) { <p>@avatar.ExpressionName · @avatar.Intensity.ToString("P0") @(avatar.IsFallback ? "(respaldo)" : "")</p> }</div>
+        </div>
+        <div class="sue-card"><h2 class="sue-card-title">Encuesta</h2>
+            @if (!_result.Survey.Any(s => s.SubmittedAtUtc.HasValue)) { <p>Aún no hay encuesta enviada.</p>@if (_session?.IsOwner == true && _session.IsTerminal) { <a href="/surveys?sessionId=@_session.Id">Responder encuesta</a> } }
+            @foreach (var response in _result.Survey) { <p>Enviada: @(response.SubmittedAtUtc?.ToLocalTime().ToString("g") ?? "Pendiente")</p>@foreach (var answer in response.Answers) { <p>@QuestionLabel(answer.QuestionId): @answer.Value</p> } }
         </div>
     }
 </div>
-
 @code {
+    [SupplyParameterFromQuery] public Guid? SessionId { get; set; }
     private ExperimentSessionSnapshotDto? _session;
-    private bool _isLoading = true;
-    private string? _errorMessage;
-
+    private SessionResultDto? _result;
+    private SurveyDefinitionDto? _definition;
+    private List<ExperimentSessionSnapshotDto> _all = [];
+    private int _page = 1, _total;
+    private string? _error, _listError;
+    private bool _loadingList;
+    [CascadingParameter] public Task<AuthenticationState> AuthenticationState { get; set; } = default!;
     protected override async Task OnInitializedAsync()
     {
-        await LoadAsync();
+        var user = (await AuthenticationState).User;
+        if (user.IsInRole("Researcher") || user.IsInRole("Administrator")) await LoadListAsync();
     }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    private async Task LoadAsync(ExperimentSessionSnapshotDto? session)
     {
-        if (firstRender && !_isLoading && string.IsNullOrWhiteSpace(_errorMessage))
-        {
-            await DrawBarAsync();
-        }
-    }
-
-    private async Task LoadAsync()
-    {
-        _isLoading = true;
-        _errorMessage = null;
-
+        _session = session; _result = null; _definition = null; _error = null;
+        if (session is null || (session.IsOwner && !session.IsTerminal)) return;
         try
         {
-            _session = await ExperimentSessionApiClient.GetLatestAsync();
+            _result = await Sessions.GetResultAsync(session.Id);
+            if (session.IsTerminal && _result.Survey.Count > 0) _definition = await Sessions.GetSurveyAsync(session.Id);
         }
-        catch (ApiException exception) when (exception.StatusCode == HttpStatusCode.Unauthorized)
-        {
-            await AuthStateProvider.SignOutAsync();
-            NavigationManager.NavigateTo("/login?returnUrl=%2Fresults", replace: true);
-        }
-        catch (ApiException exception)
-        {
-            _errorMessage = exception.Message;
-        }
-        finally
-        {
-            _isLoading = false;
-        }
+        catch (ApiException ex) { _error = ex.Message; }
     }
-
-    private async Task DrawBarAsync()
+    private string QuestionLabel(Guid id) => _definition?.Questions.FirstOrDefault(q => q.Id == id)?.Text ?? $"Pregunta {id}";
+    private Task PreviousAsync() { _page--; return LoadListAsync(); }
+    private Task NextAsync() { _page++; return LoadListAsync(); }
+    private async Task LoadListAsync()
     {
-        var data = new
-        {
-            labels = new[] { "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom" },
-            values = new[] { 62, 71, 68, 79, 74, 84, 78 },
-            colors = new[] { "#E8C9A0", "#B5C4B1", "#D4B8A7", "#C4957A", "#D5C4D4", "#8FA38A", "#A87B64" }
-        };
-
-        await JS.InvokeVoidAsync("sueDrawBar", "resultsBar", data);
+        if (_loadingList) return;
+        _loadingList = true; _listError = null;
+        try { var result = await Sessions.ListResultsAsync(_page); _all = result.Items; _total = result.Total; }
+        catch (ApiException ex) { _listError = ex.Message; }
+        finally { _loadingList = false; }
     }
-
-    private async Task ExportReportAsync()
+    private async Task ExportAsync()
     {
-        var report = new
+        if (_result is null) return;
+        var user = (await AuthenticationState).User;
+        object report = user.IsInRole("Researcher") || user.IsInRole("Administrator") ? _result : new
         {
-            app = "SUE — Sistema de Usuario con Empatía",
-            generated = DateTime.UtcNow.ToString("o"),
-            session = _session
+            _result.Session.SessionCode,
+            _result.Session.Status,
+            _result.Conversation,
+            Emotions = _result.EmotionReadings.Select(e => new { e.Emotion, e.Score, e.CapturedAtUtc }),
+            Expressions = _result.AvatarExpressions.Select(a => new { a.ExpressionName, a.Intensity }),
+            _result.Survey
         };
-
-        var json = System.Text.Json.JsonSerializer.Serialize(report, new System.Text.Json.JsonSerializerOptions
-        {
-            WriteIndented = true
-        });
-
-        await JS.InvokeVoidAsync("sueDownloadJson", "sue-report.json", json);
+        await JS.InvokeVoidAsync("sueDownloadJson", $"sue-{_result.Session.SessionCode}.json", System.Text.Json.JsonSerializer.Serialize(report, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
     }
 }

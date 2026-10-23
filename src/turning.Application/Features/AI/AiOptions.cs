@@ -232,12 +232,23 @@ public sealed class AiOptions
         if (ProviderOrder.Count == 0)
             errors.Add($"'{SectionName}:ProviderOrder' no puede estar vacío.");
 
-        if (!ProviderOrder.Contains(RuleBasedProviderName, StringComparer.OrdinalIgnoreCase))
+        // Ultimo, no solo presente: el router sigue este orden y rule-based nunca falla, asi que
+        // si va antes, los proveedores externos configurados despues jamas se llamarian.
+        if (ProviderOrder.Count == 0
+            || !string.Equals(ProviderOrder[^1], RuleBasedProviderName, StringComparison.OrdinalIgnoreCase))
         {
             errors.Add(
                 $"'{SectionName}:ProviderOrder' debe terminar en '{RuleBasedProviderName}': es el único " +
                 "eslabón que no puede fallar, y sin él una caída de los proveedores externos dejaría " +
                 "la conversación sin respuesta.");
+        }
+
+        // Una entrada anterior (p. ej. [rule-based, openai, rule-based]) tambien se salta a los externos.
+        if (ProviderOrder.Count(p => string.Equals(p, RuleBasedProviderName, StringComparison.OrdinalIgnoreCase)) > 1)
+        {
+            errors.Add(
+                $"'{SectionName}:ProviderOrder' solo puede incluir '{RuleBasedProviderName}' una vez, " +
+                "al final: una entrada anterior respondería siempre y los proveedores externos no se llamarían.");
         }
 
         if (TotalBudgetMs <= 0)
