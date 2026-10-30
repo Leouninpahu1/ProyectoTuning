@@ -140,6 +140,25 @@ public sealed class AuthService : IAuthService
         return new AuthenticatedUser { Id = user.Id, Email = user.Email, FullName = user.FullName, Role = user.Role };
     }
 
+    /// <inheritdoc />
+    public async Task<PagedUsersResult> ListUsersAsync(Guid actorId, string? query, int page, int pageSize, CancellationToken ct = default)
+    {
+        var actor = await _userAccountRepository.GetByIdAsync(actorId, ct);
+        if (actor?.Role != UserRoles.Administrator)
+            throw new TurningApplicationException("Se requiere un administrador.", "AUTH_FORBIDDEN");
+        if (page < 1 || pageSize < 1 || pageSize > 50)
+            throw new TurningApplicationException("Paginación inválida.", "AUTH_INVALID_PAGE");
+
+        var (items, total) = await _userAccountRepository.SearchAsync(query, page, pageSize, ct);
+        return new PagedUsersResult
+        {
+            Items = items.Select(user => new AuthenticatedUser { Id = user.Id, Email = user.Email, FullName = user.FullName, Role = user.Role }).ToList(),
+            Total = total,
+            Page = page,
+            PageSize = pageSize
+        };
+    }
+
     private static void ValidateLoginRequest(LoginRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))

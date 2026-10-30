@@ -103,6 +103,25 @@ public sealed class AuthController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// Lista las cuentas con su rol para administración, con búsqueda por nombre o correo.
+    /// </summary>
+    /// <response code="200">Página de cuentas, sin contraseñas ni hashes.</response>
+    /// <response code="400">Paginación inválida (<c>AUTH_INVALID_PAGE</c>).</response>
+    /// <response code="403">El usuario no es Administrator.</response>
+    [Authorize(Roles = "Administrator")]
+    [HttpGet("users")]
+    [ProducesResponseType(typeof(PagedUsersResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<PagedUsersResult>> ListUsers(
+        [FromQuery] string? q, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
+    {
+        var claim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+        if (!Guid.TryParse(claim, out var actorId) || actorId == Guid.Empty) return Unauthorized();
+        return Ok(await _authService.ListUsersAsync(actorId, q, page, pageSize, ct));
+    }
+
     [Authorize(Roles = "Administrator")]
     [HttpPut("users/{userId:guid}/role")]
     public async Task<ActionResult<AuthenticatedUser>> AssignRole(Guid userId, [FromBody] AssignUserRoleRequest request, CancellationToken ct)

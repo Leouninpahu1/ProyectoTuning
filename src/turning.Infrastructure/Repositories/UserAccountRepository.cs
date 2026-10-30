@@ -49,6 +49,29 @@ public sealed class UserAccountRepository : IUserAccountRepository
     }
 
     /// <inheritdoc />
+    public async Task<(IReadOnlyList<UserAccount> Items, int Total)> SearchAsync(
+        string? query, int page, int pageSize, CancellationToken cancellationToken = default)
+    {
+        var accounts = _dbContext.UserAccounts.AsNoTracking().Where(user => !user.IsDeleted);
+        if (!string.IsNullOrWhiteSpace(query))
+        {
+            // NormalizedEmail ya está en mayúsculas; la intercalación de SQL Server no distingue mayúsculas en FullName.
+            var text = query.Trim();
+            var upper = text.ToUpperInvariant();
+            accounts = accounts.Where(user => user.NormalizedEmail.Contains(upper) || user.FullName.Contains(text));
+        }
+
+        var total = await accounts.CountAsync(cancellationToken);
+        var items = await accounts
+            .OrderBy(user => user.NormalizedEmail)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return (items, total);
+    }
+
+    /// <inheritdoc />
     public async Task AddAsync(UserAccount userAccount, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(userAccount);

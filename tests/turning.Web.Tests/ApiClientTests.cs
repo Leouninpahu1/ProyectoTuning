@@ -108,6 +108,24 @@ public class ApiClientTests
     }
 
     [Fact]
+    public async Task AdminUserList_UsesAuthenticatedGetWithTheSearch()
+    {
+        var handler = new RecordingHandler(HttpStatusCode.OK,
+            "{\"items\":[{\"id\":\"00000000-0000-0000-0000-000000000001\",\"fullName\":\"Ana\",\"email\":\"ana@test.test\",\"role\":\"Participant\"}],\"total\":1,\"page\":2,\"pageSize\":20}");
+        var auth = new AuthSession(); auth.SetAccessToken("admin-token");
+        var client = new AuthApiClient(new HttpClient(handler) { BaseAddress = new("http://localhost/") }, auth);
+
+        var result = await client.ListUsersAsync("ana lópez", 2);
+
+        Assert.Equal(HttpMethod.Get, handler.Method);
+        Assert.Equal("/api/auth/users", handler.Uri!.AbsolutePath);
+        Assert.Contains("page=2", handler.Uri.Query);
+        Assert.Contains("q=ana%20l%C3%B3pez", handler.Uri.Query);
+        Assert.Equal("Bearer admin-token", handler.Authorization);
+        Assert.Equal("Participant", Assert.Single(result.Items).Role);
+    }
+
+    [Fact]
     public async Task PasswordReset_PostsTheRequestsWithoutReadingABody()
     {
         var forgot = new RecordingHandler(HttpStatusCode.Accepted, "{}");

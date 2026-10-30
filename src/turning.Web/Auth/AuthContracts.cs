@@ -38,6 +38,17 @@ public sealed class AuthenticatedUserDto
     public required string Role { get; init; }
 }
 
+public sealed class PagedUsersDto
+{
+    public List<AuthenticatedUserDto> Items { get; init; } = [];
+
+    public int Total { get; init; }
+
+    public int Page { get; init; }
+
+    public int PageSize { get; init; }
+}
+
 public sealed class ApiErrorResponse
 {
     public string? Message { get; init; }

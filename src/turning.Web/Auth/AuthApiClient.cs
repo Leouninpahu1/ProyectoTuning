@@ -18,6 +18,9 @@ public sealed class AuthApiClient(HttpClient httpClient, AuthSession authSession
     public Task<AuthenticatedUserDto> SetRoleAsync(Guid userId, string role, CancellationToken ct = default) =>
         SendAsync<AuthenticatedUserDto>(HttpMethod.Put, $"api/auth/users/{userId}/role", new { role }, ct);
 
+    public Task<PagedUsersDto> ListUsersAsync(string? query, int page = 1, CancellationToken ct = default) =>
+        SendAsync<PagedUsersDto>(HttpMethod.Get, $"api/auth/users?page={page}&pageSize=20&q={Uri.EscapeDataString(query ?? "")}", null, ct);
+
     public async Task ForgotPasswordAsync(string email, CancellationToken ct = default)
     {
         using var request = CreateRequest(HttpMethod.Post, "api/auth/forgot-password", new { email });
