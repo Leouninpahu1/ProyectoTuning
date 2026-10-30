@@ -170,6 +170,21 @@ public class AuthServiceTests
     }
 
     [Theory]
+    [InlineData("abc")]
+    [InlineData("a@test.test, b@test.test")]
+    [InlineData("Ana <ana@test.test>")]
+    public async Task RegisterAsync_WithEmailThatIsNotASingleAddress_ShouldRejectBeforeTouchingRepository(string email)
+    {
+        // Una lista guardada como correo haría que el restablecimiento escribiera a varias direcciones.
+        var service = new AuthService(_userRepository, _passwordHasherService, _tokenService);
+
+        Func<Task> act = async () => await service.RegisterAsync(new RegisterRequest { FullName = "Ana", Email = email, Password = "secret123" });
+
+        (await act.Should().ThrowAsync<TurningApplicationException>()).Which.Code.Should().Be("AUTH_INVALID_REQUEST");
+        await _userRepository.DidNotReceive().AddAsync(Arg.Any<UserAccount>(), Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
     [InlineData("participant")]
     [InlineData("PARTICIPANT")]
     [InlineData("  Participant  ")]

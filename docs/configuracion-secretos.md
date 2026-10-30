@@ -158,8 +158,9 @@ dotnet user-secrets --project src/turning.API set "Email:Smtp:Password" "<contra
 
 ### Sin servidor de correo en local
 
-`appsettings.Development.json` define `Email:PickupDirectory`. Con esa clave el correo no se
-envía: se escribe como `.eml` en `%LOCALAPPDATA%\Turning\mail` y se abre con cualquier cliente
+`appsettings.Development.json` define `Email:PickupDirectory` como `Turning/mail`, una ruta
+relativa a la carpeta local de la aplicación. Con esa clave el correo no se envía: se escribe como
+`.eml` en `%LOCALAPPDATA%\Turning\mail` (en Linux, `~/.local/share/Turning/mail`) y se abre con cualquier cliente
 de correo. Para probar el envío real con Gmail en local, deja `Email__PickupDirectory` vacío y
 configura las variables de la tabla.
 

@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Mail;
 using Microsoft.Extensions.Options;
+using Turning.Application.Features.Auth;
 using Turning.Application.Interfaces;
 
 namespace Turning.Infrastructure.Email;
@@ -25,13 +26,24 @@ public sealed class SmtpEmailSender : IEmailSender
     /// <inheritdoc />
     public async Task SendAsync(string to, string subject, string textBody, CancellationToken cancellationToken = default)
     {
-        using var message = new MailMessage(
-            _options.From ?? throw new InvalidOperationException("Falta Email:From."), to, subject, textBody);
+        using var message = new MailMessage
+        {
+            From = new MailAddress(_options.From ?? throw new InvalidOperationException("Falta Email:From.")),
+            Subject = subject,
+            Body = textBody
+        };
+        // MailAddress acepta "a@x, b@y" como nombre visible más dirección: se exige una única dirección exacta.
+        if (!AuthService.IsPlainEmailAddress(to))
+            throw new FormatException("El destinatario debe ser una única dirección de correo.");
+        message.To.Add(new MailAddress(to.Trim()));
         using var client = new SmtpClient();
 
         if (!string.IsNullOrWhiteSpace(_options.PickupDirectory))
         {
-            var folder = Path.GetFullPath(Environment.ExpandEnvironmentVariables(_options.PickupDirectory));
+            // Una ruta relativa cuelga de la carpeta local de la aplicación: %LOCALAPPDATA% en Windows, ~/.local/share en Linux.
+            var folder = Path.IsPathRooted(_options.PickupDirectory)
+                ? _options.PickupDirectory
+                : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), _options.PickupDirectory);
             Directory.CreateDirectory(folder);
             client.DeliveryMethod = SmtpDeliveryMethod.SpecifiedPickupDirectory;
             client.PickupDirectoryLocation = folder;

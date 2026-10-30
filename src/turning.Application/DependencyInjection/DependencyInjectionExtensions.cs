@@ -24,6 +24,7 @@ public static class DependencyInjectionExtensions
 
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IPasswordResetService, PasswordResetService>();
+        services.AddSingleton<PasswordResetCooldown>();
         services.TryAddSingleton(TimeProvider.System);
         services.AddScoped<Features.Emotions.ITextEmotionAnalysisService, Features.Emotions.TextEmotionAnalysisService>();
         services.AddScoped<IConversationOrchestrator, ConversationOrchestrator>();

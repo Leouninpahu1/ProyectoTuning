@@ -1,3 +1,4 @@
+using System.Net.Mail;
 using Turning.Application.Exceptions;
 using Turning.Application.Interfaces;
 using Turning.Domain.Common;
@@ -15,6 +16,19 @@ public sealed class AuthService : IAuthService
     /// Longitud mínima de contraseña, compartida por el registro y el restablecimiento.
     /// </summary>
     public const int MinimumPasswordLength = 8;
+
+    /// <summary>
+    /// Indica si el texto es una única dirección de correo, sin nombre visible ni listas.
+    /// </summary>
+    /// <remarks>
+    /// Una lista como "a@x.com, b@y.com" guardada como correo de una cuenta haría que el
+    /// correo de restablecimiento saliera a todas esas direcciones.
+    /// </remarks>
+    public static bool IsPlainEmailAddress(string? email) =>
+        !string.IsNullOrWhiteSpace(email)
+        && MailAddress.TryCreate(email.Trim(), out var parsed)
+        && parsed.DisplayName.Length == 0
+        && parsed.Address == email.Trim();
 
     private readonly IUserAccountRepository _userAccountRepository;
     private readonly IPasswordHasherService _passwordHasherService;
@@ -94,6 +108,9 @@ public sealed class AuthService : IAuthService
 
         if (string.IsNullOrWhiteSpace(request.Email))
             throw new TurningApplicationException("El correo es obligatorio.", "AUTH_INVALID_REQUEST");
+
+        if (!IsPlainEmailAddress(request.Email))
+            throw new TurningApplicationException("Escribe un correo válido.", "AUTH_INVALID_REQUEST");
 
         if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < MinimumPasswordLength)
             throw new TurningApplicationException($"La contraseña debe tener al menos {MinimumPasswordLength} caracteres.", "AUTH_INVALID_REQUEST");

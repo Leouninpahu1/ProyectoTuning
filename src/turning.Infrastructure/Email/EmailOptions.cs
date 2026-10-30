@@ -17,13 +17,13 @@ public sealed class EmailOptions
 
     /// <summary>
     /// Solo para Development: si tiene valor, el correo se escribe como .eml en esta carpeta
-    /// en lugar de enviarse.
+    /// en lugar de enviarse. Una ruta relativa cuelga de la carpeta local de la aplicación.
     /// </summary>
     public string? PickupDirectory { get; set; }
 
     /// <summary>
-    /// Valida la configuración y devuelve los problemas encontrados.
-    /// Lista vacía significa configuración utilizable.
+    /// Valida la configuración para enviar correo de verdad y devuelve los problemas encontrados.
+    /// Lista vacía significa configuración utilizable. Solo se llama fuera de Development.
     /// </summary>
     public IReadOnlyList<string> Validate()
     {
@@ -33,7 +33,10 @@ public sealed class EmailOptions
             errors.Add("Falta 'Email:From' (dirección de la cuenta Gmail dedicada a SUE).");
 
         if (!string.IsNullOrWhiteSpace(PickupDirectory))
+        {
+            errors.Add("'Email:PickupDirectory' está activo: los correos se guardan en disco y no se envía ninguno.");
             return errors;
+        }
 
         if (string.IsNullOrWhiteSpace(Smtp.Host))
             errors.Add("Falta 'Email:Smtp:Host' (smtp.gmail.com para la cuenta Gmail dedicada).");

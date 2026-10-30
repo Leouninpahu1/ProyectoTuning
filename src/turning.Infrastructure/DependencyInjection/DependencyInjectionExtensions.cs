@@ -58,7 +58,8 @@ public static class DependencyInjectionExtensions
         services.Configure<Turning.Application.Features.Auth.PasswordResetOptions>(
             configuration.GetSection(Turning.Application.Features.Auth.PasswordResetOptions.SectionName));
         services.Configure<Email.EmailOptions>(configuration.GetSection(Email.EmailOptions.SectionName));
-        services.AddScoped<IEmailSender, Email.SmtpEmailSender>();
+        // Singleton a propósito: el restablecimiento envía después de responder, fuera del scope de la petición.
+        services.AddSingleton<IEmailSender, Email.SmtpEmailSender>();
         services.Configure<Turning.Application.Features.ExperimentSessions.SessionOptions>(configuration.GetSection("Session"));
         services.Configure<Turning.Infrastructure.Services.SessionOptions>(configuration.GetSection("Session"));
         services.AddHostedService<Services.SessionSchedulerService>();

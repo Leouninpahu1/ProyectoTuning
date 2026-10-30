@@ -22,11 +22,10 @@ public class PasswordResetServiceTests
     private readonly IUserAccountRepository _users = Substitute.For<IUserAccountRepository>();
     private readonly IPasswordHasherService _hasher = Substitute.For<IPasswordHasherService>();
     private readonly IEmailSender _email = Substitute.For<IEmailSender>();
+    private readonly PasswordResetCooldown _cooldown = new();
     private readonly FakeTime _time = new();
     private readonly ListLogger _logger = new();
     private readonly List<(string To, string Body)> _sent = [];
-
-    // El enfriamiento es estático: cada prueba usa un correo propio para no interferir con las demás.
     private readonly UserAccount _user = UserAccount.Create($"{Guid.NewGuid():N}@test.test", "Ana Prueba", "hash-inicial", "Participant");
 
     public PasswordResetServiceTests()
@@ -42,11 +41,13 @@ public class PasswordResetServiceTests
         _users,
         _hasher,
         _email,
+        _cooldown,
         Options.Create(new JwtOptions { SigningKey = "clave-de-prueba-con-mas-de-32-caracteres-0123456789" }),
         Options.Create(new PasswordResetOptions { BaseUrl = "https://sue.test/" }),
         _time,
         new Logger(_logger));
 
+    // El envío corre sin esperarlo, pero con el sustituto termina antes de que RequestAsync devuelva.
     private async Task<string> RequestTokenAsync(PasswordResetService service)
     {
         await service.RequestAsync(_user.Email);
@@ -60,6 +61,8 @@ public class PasswordResetServiceTests
     [InlineData("   ")]
     [InlineData("abc")]
     [InlineData("abc@")]
+    [InlineData("Ana <ana@test.test>")]
+    [InlineData("a@test.test, b@test.test")]
     public async Task RequestAsync_WithInvalidEmail_IsRejectedAndSendsNothing(string email)
     {
         var act = () => CreateService().RequestAsync(email);
@@ -77,12 +80,12 @@ public class PasswordResetServiceTests
     }
 
     [Fact]
-    public async Task RequestAsync_WithKnownEmail_SendsOneMessageWithTheLink()
+    public async Task RequestAsync_WithKnownEmail_SendsOneMessageWithoutTheAccountName()
     {
         await RequestTokenAsync(CreateService());
 
         _sent.Should().ContainSingle().Which.To.Should().Be(_user.Email);
-        _sent[0].Body.Should().Contain("30 minutos");
+        _sent[0].Body.Should().Contain("30 minutos").And.NotContain("Ana Prueba");
     }
 
     [Fact]
@@ -123,6 +126,24 @@ public class PasswordResetServiceTests
 
         (await act.Should().ThrowAsync<TurningApplicationException>()).Which.Code.Should().Be("AUTH_RESET_TOKEN_INVALID");
         _user.PasswordHash.Should().Be("hash-ClaveNueva123");
+    }
+
+    [Fact]
+    public async Task ResetAsync_ConcurrentRequestsWithTheSameToken_OnlyOneSucceeds()
+    {
+        var service = CreateService();
+        var token = await RequestTokenAsync(service);
+        // La lectura tarda: sin candado, las dos validarían contra el hash viejo antes de que una lo cambie.
+        _users.GetByIdAsync(_user.Id, Arg.Any<CancellationToken>()).Returns(async _ =>
+        {
+            await Task.Delay(50);
+            return (UserAccount?)_user;
+        });
+
+        var results = await Task.WhenAll(TryResetAsync(service, token, "ClaveNueva123"), TryResetAsync(service, token, "OtraClave456"));
+
+        results.Count(succeeded => succeeded).Should().Be(1);
+        await _users.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -182,18 +203,48 @@ public class PasswordResetServiceTests
     }
 
     [Fact]
-    public async Task RequestAsync_WhenSendingFails_DoesNotThrowNorLogTheLink()
+    public async Task RequestAsync_WhenSendingFails_LogsNoPersonalDataAndAllowsARetry()
     {
         string? body = null;
         _email.SendAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Do<string>(b => body = b), Arg.Any<CancellationToken>())
-            .ThrowsAsync(new InvalidOperationException("smtp caído"));
+            .ThrowsAsync(new InvalidOperationException($"buzón no disponible: {_user.Email}"));
+        var service = CreateService();
 
-        var act = () => CreateService().RequestAsync(_user.Email);
+        var act = () => service.RequestAsync(_user.Email);
 
         await act.Should().NotThrowAsync();
         var token = Regex.Match(body!, @"token=(\S+)").Groups[1].Value;
         token.Should().NotBeEmpty();
-        _logger.Messages.Should().NotBeEmpty().And.OnlyContain(m => !m.Contains(token) && !m.Contains("reset-password"));
+        _logger.Messages.Should().NotBeEmpty()
+            .And.OnlyContain(m => !m.Contains(token) && !m.Contains("reset-password") && !m.Contains(_user.Email));
+
+        // El fallo libera el minuto de espera: el reintento inmediato vuelve a enviar.
+        await service.RequestAsync(_user.Email);
+        await _email.Received(2).SendAsync(_user.Email, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public void Cooldown_ReleasedReservation_CanBeTakenAgain()
+    {
+        var now = DateTimeOffset.UtcNow;
+
+        _cooldown.TryReserve("ANA", now).Should().BeTrue();
+        _cooldown.TryReserve("ANA", now.AddSeconds(1)).Should().BeFalse();
+        _cooldown.Release("ANA", now);
+        _cooldown.TryReserve("ANA", now.AddSeconds(2)).Should().BeTrue();
+    }
+
+    private static async Task<bool> TryResetAsync(PasswordResetService service, string token, string password)
+    {
+        try
+        {
+            await service.ResetAsync(token, password);
+            return true;
+        }
+        catch (TurningApplicationException e) when (e.Code == "AUTH_RESET_TOKEN_INVALID")
+        {
+            return false;
+        }
     }
 
     private sealed class FakeTime : TimeProvider

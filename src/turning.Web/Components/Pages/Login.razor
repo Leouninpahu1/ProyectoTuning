@@ -51,16 +51,16 @@
                                        style="color: #A87B64; font-size: 13px; margin-top: 4px; display: block;" />
                 </div>
 
-                <p style="text-align: right; margin: -8px 0 20px; font-size: 14px;">
-                    <a href="/forgot-password" style="color: var(--terracota-oscura); font-weight: 700; text-decoration: none;">
-                        ¿Olvidaste tu contraseña?
-                    </a>
-                </p>
-
                 <button type="submit" class="btn-tierra" disabled="@_isSubmitting">
                     @(_isSubmitting ? "◦ Abriendo tu espacio..." : "◦ Iniciar mi viaje")
                 </button>
             </EditForm>
+
+            @* Fuera del formulario: es una navegación, no debe enviar el login. *@
+            <a href="/forgot-password" class="btn-ghost"
+               style="display: block; width: 100%; box-sizing: border-box; margin-top: 12px; text-align: center; text-decoration: none;">
+                ¿Olvidaste tu contraseña?
+            </a>
 
             <p style="text-align: center; margin-top: 24px; font-size: 14px; color: var(--barro-claro);">
                 ¿Primera vez aquí? 

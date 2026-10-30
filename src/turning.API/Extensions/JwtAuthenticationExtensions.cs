@@ -99,7 +99,16 @@ public static class JwtAuthenticationExtensions
                         var users = context.HttpContext.RequestServices.GetRequiredService<IUserAccountRepository>();
                         var user = await users.GetByIdAsync(userId, context.HttpContext.RequestAborted);
                         if (user is null || context.Principal?.IsInRole(user.Role) != true)
+                        {
                             context.Fail("El usuario o su rol cambió. Inicia sesión de nuevo.");
+                            return;
+                        }
+
+                        // shortcut: un token sin huella (emitido antes de este cambio) se acepta hasta que expire;
+                        // pasados Jwt:ExpirationMinutes desde el despliegue todos la llevan.
+                        var stamp = context.Principal?.FindFirstValue(PasswordStamp.ClaimType);
+                        if (stamp is not null && stamp != PasswordStamp.Of(user))
+                            context.Fail("La contraseña cambió. Inicia sesión de nuevo.");
                     }
                 };
             });
