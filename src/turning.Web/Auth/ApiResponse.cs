@@ -6,14 +6,22 @@ namespace turning.Web.Auth;
 
 internal static class ApiResponse
 {
-    internal static async Task<T> SendAsync<T>(HttpClient client, HttpRequestMessage request, CancellationToken ct)
+    internal static Task<T> SendAsync<T>(HttpClient client, HttpRequestMessage request, CancellationToken ct) =>
+        SendAsync(client, request, ct, async response =>
+            await response.Content.ReadFromJsonAsync<T>(cancellationToken: ct)
+                ?? throw new ApiException("La API devolvió una respuesta vacía.", response.StatusCode));
+
+    // Para respuestas 202/204 cuyo cuerpo no interesa: solo importa que la petición tuvo éxito.
+    internal static Task SendWithoutBodyAsync(HttpClient client, HttpRequestMessage request, CancellationToken ct) =>
+        SendAsync(client, request, ct, _ => Task.FromResult(true));
+
+    private static async Task<T> SendAsync<T>(HttpClient client, HttpRequestMessage request, CancellationToken ct, Func<HttpResponseMessage, Task<T>> read)
     {
         try
         {
             using var response = await client.SendAsync(request, ct);
             if (response.IsSuccessStatusCode)
-                return await response.Content.ReadFromJsonAsync<T>(cancellationToken: ct)
-                    ?? throw new ApiException("La API devolvió una respuesta vacía.", response.StatusCode);
+                return await read(response);
 
             var message = response.StatusCode switch
             {

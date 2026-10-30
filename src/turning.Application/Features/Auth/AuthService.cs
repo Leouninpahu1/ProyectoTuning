@@ -11,6 +11,11 @@ namespace Turning.Application.Features.Auth;
 /// </summary>
 public sealed class AuthService : IAuthService
 {
+    /// <summary>
+    /// Longitud mínima de contraseña, compartida por el registro y el restablecimiento.
+    /// </summary>
+    public const int MinimumPasswordLength = 8;
+
     private readonly IUserAccountRepository _userAccountRepository;
     private readonly IPasswordHasherService _passwordHasherService;
     private readonly ITokenService _tokenService;
@@ -90,8 +95,8 @@ public sealed class AuthService : IAuthService
         if (string.IsNullOrWhiteSpace(request.Email))
             throw new TurningApplicationException("El correo es obligatorio.", "AUTH_INVALID_REQUEST");
 
-        if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 8)
-            throw new TurningApplicationException("La contraseña debe tener al menos 8 caracteres.", "AUTH_INVALID_REQUEST");
+        if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < MinimumPasswordLength)
+            throw new TurningApplicationException($"La contraseña debe tener al menos {MinimumPasswordLength} caracteres.", "AUTH_INVALID_REQUEST");
 
         if (string.IsNullOrWhiteSpace(request.Role)) return;
         if (!UserRoles.IsKnown(request.Role))

@@ -18,12 +18,30 @@ public sealed class AuthApiClient(HttpClient httpClient, AuthSession authSession
     public Task<AuthenticatedUserDto> SetRoleAsync(Guid userId, string role, CancellationToken ct = default) =>
         SendAsync<AuthenticatedUserDto>(HttpMethod.Put, $"api/auth/users/{userId}/role", new { role }, ct);
 
+    public async Task ForgotPasswordAsync(string email, CancellationToken ct = default)
+    {
+        using var request = CreateRequest(HttpMethod.Post, "api/auth/forgot-password", new { email });
+        await ApiResponse.SendWithoutBodyAsync(httpClient, request, ct);
+    }
+
+    public async Task ResetPasswordAsync(string token, string newPassword, CancellationToken ct = default)
+    {
+        using var request = CreateRequest(HttpMethod.Post, "api/auth/reset-password", new { token, newPassword });
+        await ApiResponse.SendWithoutBodyAsync(httpClient, request, ct);
+    }
+
     private async Task<T> SendAsync<T>(HttpMethod method, string uri, object? body, CancellationToken ct)
     {
-        using var request = new HttpRequestMessage(method, uri);
+        using var request = CreateRequest(method, uri, body);
+        return await ApiResponse.SendAsync<T>(httpClient, request, ct);
+    }
+
+    private HttpRequestMessage CreateRequest(HttpMethod method, string uri, object? body)
+    {
+        var request = new HttpRequestMessage(method, uri);
         if (body is not null) request.Content = JsonContent.Create(body);
         if (!string.IsNullOrWhiteSpace(authSession.AccessToken)) request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", authSession.AccessToken);
-        return await ApiResponse.SendAsync<T>(httpClient, request, ct);
+        return request;
     }
 }
 

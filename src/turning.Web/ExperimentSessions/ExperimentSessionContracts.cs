@@ -57,17 +57,6 @@ public sealed class SessionListDto
     public int Total { get; init; }
 }
 
-public sealed class EmotionReadingDto
-{
-    public required string Emotion { get; init; }
-
-    public double Score { get; init; }
-
-    public bool IsDegraded { get; init; }
-
-    public DateTime CapturedAtUtc { get; init; }
-}
-
 public sealed class AddConversationTurnRequestDto
 {
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

@@ -71,6 +71,38 @@ public sealed class AuthController : ControllerBase
         return Ok(user);
     }
 
+    /// <summary>
+    /// Envía un enlace de restablecimiento si el correo pertenece a una cuenta.
+    /// </summary>
+    /// <response code="202">Siempre la misma respuesta, exista o no la cuenta.</response>
+    /// <response code="400">Correo vacío o mal formado (<c>AUTH_INVALID_REQUEST</c>).</response>
+    [AllowAnonymous]
+    [HttpPost("forgot-password")]
+    [ProducesResponseType(StatusCodes.Status202Accepted)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ForgotPassword(
+        [FromBody] ForgotPasswordRequest request, [FromServices] IPasswordResetService resets, CancellationToken cancellationToken)
+    {
+        await resets.RequestAsync(request.Email, cancellationToken);
+        return Accepted(new { });
+    }
+
+    /// <summary>
+    /// Reemplaza la contraseña con el token del enlace. No inicia sesión.
+    /// </summary>
+    /// <response code="204">Contraseña reemplazada.</response>
+    /// <response code="400">Token no válido (<c>AUTH_RESET_TOKEN_INVALID</c>) o contraseña corta (<c>AUTH_INVALID_REQUEST</c>).</response>
+    [AllowAnonymous]
+    [HttpPost("reset-password")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ResetPassword(
+        [FromBody] ResetPasswordRequest request, [FromServices] IPasswordResetService resets, CancellationToken cancellationToken)
+    {
+        await resets.ResetAsync(request.Token, request.NewPassword, cancellationToken);
+        return NoContent();
+    }
+
     [Authorize(Roles = "Administrator")]
     [HttpPut("users/{userId:guid}/role")]
     public async Task<ActionResult<AuthenticatedUser>> AssignRole(Guid userId, [FromBody] AssignUserRoleRequest request, CancellationToken ct)
@@ -84,4 +116,25 @@ public sealed class AuthController : ControllerBase
 public sealed class AssignUserRoleRequest
 {
     public string Role { get; init; } = string.Empty;
+}
+
+/// <summary>
+/// Petición de enlace de restablecimiento.
+/// </summary>
+public sealed class ForgotPasswordRequest
+{
+    /// <summary>Correo de la cuenta.</summary>
+    public string Email { get; init; } = string.Empty;
+}
+
+/// <summary>
+/// Petición para reemplazar la contraseña con el token del enlace.
+/// </summary>
+public sealed class ResetPasswordRequest
+{
+    /// <summary>Token recibido en el enlace del correo.</summary>
+    public string Token { get; init; } = string.Empty;
+
+    /// <summary>Contraseña nueva, de al menos 8 caracteres.</summary>
+    public string NewPassword { get; init; } = string.Empty;
 }

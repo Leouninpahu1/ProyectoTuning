@@ -55,6 +55,10 @@ public static class DependencyInjectionExtensions
         services.AddScoped<ITokenService, JwtTokenService>();
         services.Configure<Turning.Application.Features.Auth.JwtOptions>(
             configuration.GetSection(Turning.Application.Features.Auth.JwtOptions.SectionName));
+        services.Configure<Turning.Application.Features.Auth.PasswordResetOptions>(
+            configuration.GetSection(Turning.Application.Features.Auth.PasswordResetOptions.SectionName));
+        services.Configure<Email.EmailOptions>(configuration.GetSection(Email.EmailOptions.SectionName));
+        services.AddScoped<IEmailSender, Email.SmtpEmailSender>();
         services.Configure<Turning.Application.Features.ExperimentSessions.SessionOptions>(configuration.GetSection("Session"));
         services.Configure<Turning.Infrastructure.Services.SessionOptions>(configuration.GetSection("Session"));
         services.AddHostedService<Services.SessionSchedulerService>();
@@ -63,7 +67,6 @@ public static class DependencyInjectionExtensions
         // - DbContext
         // - Unit of Work
         // - External API clients
-        // - Email services
         // - etc.
 
         return services;

@@ -32,10 +32,15 @@ frontend cambia sus pantallas.
 | API | `Session__DurationSeconds`, `Session__InactivitySeconds` | valor, opcional |
 | API | `Ai__OpenAi__ApiKey`, `Ai__OpenRouter__ApiKey` | secreto, opcional |
 | API | `Ai__ProviderOrder__0`, `Ai__ProviderOrder__1`... | valor, opcional (debe terminar en `rule-based`) |
+| API | `PasswordReset__BaseUrl` (URL pública de la Web) | valor |
+| API | `Email__From`, `Email__Smtp__Username` (cuenta Gmail dedicada a SUE, nunca `proinvsemillero@gmail.com`) | valor |
+| API | `Email__Smtp__Host=smtp.gmail.com`, `Email__Smtp__Port=587` | valor |
+| API | `Email__Smtp__Password` (contraseña de aplicación de Gmail) | secreto |
 | Web | `Api__BaseUrl` (hostname interno del backend) | valor |
 
 Más detalle en `docs/configuracion-secretos.md`. Sin claves de IA el sistema arranca igual y
-responde con el adaptador por reglas, marcado como degradado.
+responde con el adaptador por reglas, marcado como degradado. Sin la cuenta de correo también
+arranca, con una advertencia, pero el restablecimiento de contraseña no entrega ningún correo.
 
 ## Compuertas antes de desplegar
 

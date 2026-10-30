@@ -14,6 +14,7 @@ public class ApiErrorContractTests
     [InlineData("CONVERSATION_MESSAGE_TOO_LONG", 400)]
     [InlineData("SESSION_TERMINAL", 409)]
     [InlineData("AUTH_ROLE_FORBIDDEN", 403)]
+    [InlineData("AUTH_RESET_TOKEN_INVALID", 400)]
     public async Task BusinessErrors_ShouldExposeTheStableCode(string code, int status)
     {
         var context = new DefaultHttpContext();

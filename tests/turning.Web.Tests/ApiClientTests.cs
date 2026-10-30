@@ -107,6 +107,37 @@ public class ApiClientTests
         Assert.Equal("Bearer admin-token", handler.Authorization);
     }
 
+    [Fact]
+    public async Task PasswordReset_PostsTheRequestsWithoutReadingABody()
+    {
+        var forgot = new RecordingHandler(HttpStatusCode.Accepted, "{}");
+        await new AuthApiClient(new HttpClient(forgot) { BaseAddress = new("http://localhost/") }, new()).ForgotPasswordAsync("ana@test.test");
+        Assert.Equal(HttpMethod.Post, forgot.Method);
+        Assert.Equal("/api/auth/forgot-password", forgot.Uri!.AbsolutePath);
+        Assert.Equal("ana@test.test", JsonDocument.Parse(forgot.Body!).RootElement.GetProperty("email").GetString());
+        Assert.Null(forgot.Authorization);
+
+        var reset = new RecordingHandler(HttpStatusCode.NoContent, "");
+        await new AuthApiClient(new HttpClient(reset) { BaseAddress = new("http://localhost/") }, new()).ResetPasswordAsync("tok", "ClaveNueva123");
+        Assert.Equal("/api/auth/reset-password", reset.Uri!.AbsolutePath);
+        using var body = JsonDocument.Parse(reset.Body!);
+        Assert.Equal("tok", body.RootElement.GetProperty("token").GetString());
+        Assert.Equal("ClaveNueva123", body.RootElement.GetProperty("newPassword").GetString());
+    }
+
+    [Fact]
+    public async Task PasswordReset_InvalidTokenKeepsTheApiMessage()
+    {
+        var handler = new RecordingHandler(HttpStatusCode.BadRequest,
+            "{\"error\":\"AUTH_RESET_TOKEN_INVALID\",\"code\":\"AUTH_RESET_TOKEN_INVALID\",\"message\":\"El enlace de restablecimiento no es válido o ya venció. Pide uno nuevo.\"}");
+        var client = new AuthApiClient(new HttpClient(handler) { BaseAddress = new("http://localhost/") }, new());
+
+        var error = await Assert.ThrowsAsync<ApiException>(() => client.ResetPasswordAsync("tok", "ClaveNueva123"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, error.StatusCode);
+        Assert.Contains("no es válido", error.Message);
+    }
+
     private sealed class RecordingHandler(HttpStatusCode status, string json) : HttpMessageHandler
     {
         internal Uri? Uri { get; private set; }
