@@ -1,17 +1,72 @@
 @page "/surveys"
 @attribute [Authorize]
-@layout MainLayout
+@using turning.Web.ExperimentSessions
+@inject ExperimentSessionApiClient Sessions
 
-<PageTitle>SUE — Encuestas</PageTitle>
-
+<PageTitle>SUE — Encuesta de la sesión</PageTitle>
 <div class="sue-page">
-    <header class="sue-header">
-        <p class="sue-eyebrow">○ Bienestar</p>
-        <h1 class="sue-title">Encuestas de Bienestar</h1>
-        <p class="sue-subtitle">Reflexiona a través de preguntas simples.</p>
-    </header>
-
-    <div class="sue-card">
-        <p class="sue-info-value">Próximamente: encuestas interactivas con resultados.</p>
-    </div>
+    <header class="sue-header"><p class="sue-eyebrow">Tu experiencia</p><h1 class="sue-title">Encuesta de la sesión</h1><p class="sue-subtitle">Responde al terminar. El envío es definitivo y se guarda con esta sesión.</p></header>
+    <SessionSelector SessionId="SessionId" OnSelected="LoadAsync" />
+    @if (_error is not null) { <div class="sue-card" role="alert">@_error</div> }
+    @if (_session is not null && !_session.IsTerminal) { <div class="sue-card"><p>La encuesta estará disponible cuando la sesión termine.</p><a href="/conversations?sessionId=@_session.Id">Volver a la sesión</a></div> }
+    else if (_session is not null && !_session.IsOwner) { <div class="sue-card"><p>La encuesta la responde el participante dueño de la sesión. El equipo puede consultar sus respuestas en Resultados.</p></div> }
+    else if (_submitted) { <div class="sue-card" role="status"><h2 class="sue-card-title">Encuesta enviada</h2><p>Tus respuestas quedaron guardadas.</p><a class="btn-ghost" href="/results?sessionId=@_session!.Id">Consultar resultado</a></div> }
+    else if (_definition is not null)
+    {
+        <div class="sue-card">
+            <p class="sue-subtitle">Encuesta @_definition.Code · versión @_definition.Version</p>
+            <form @onsubmit="SubmitAsync" @onsubmit:preventDefault>
+                @foreach (var question in _definition.Questions.OrderBy(q => q.Order))
+                {
+                    <div class="sue-form-field">
+                        <label class="sue-form-label" for="q-@question.Id">@question.Text @(question.Required ? "(obligatoria)" : "(opcional)")</label>
+                        @if (question.Type.Equals("scale", StringComparison.OrdinalIgnoreCase))
+                        {
+                            <select id="q-@question.Id" class="input-tierra" @bind="_answers[question.Code]" required="@question.Required" disabled="@_busy"><option value="">Selecciona 1 a 5</option>@for (var i = 1; i <= 5; i++) { <option value="@i">@i</option> }</select>
+                        }
+                        else if (question.Type.Equals("choice", StringComparison.OrdinalIgnoreCase))
+                        {
+                            <select id="q-@question.Id" class="input-tierra" @bind="_answers[question.Code]" required="@question.Required" disabled="@_busy"><option value="">Selecciona una respuesta</option><option value="Human">Una persona</option><option value="AI">Inteligencia artificial</option><option value="Unsure">No estoy seguro/a</option></select>
+                        }
+                        else
+                        {
+                            <textarea id="q-@question.Id" class="input-tierra" rows="3" maxlength="4000" @bind="_answers[question.Code]" required="@question.Required" disabled="@_busy"></textarea>
+                        }
+                    </div>
+                }
+                <button class="btn-tierra" type="submit" disabled="@_busy">@(_busy ? "Guardando…" : "Enviar respuestas definitivas")</button>
+            </form>
+        </div>
+    }
 </div>
+@code {
+    [SupplyParameterFromQuery] public Guid? SessionId { get; set; }
+    private ExperimentSessionSnapshotDto? _session;
+    private SurveyDefinitionDto? _definition;
+    private Dictionary<string, string> _answers = [];
+    private bool _busy, _submitted;
+    private string? _error;
+    private async Task LoadAsync(ExperimentSessionSnapshotDto? session)
+    {
+        _session = session; _definition = null; _answers.Clear(); _error = null; _submitted = false;
+        if (session is null || !session.IsTerminal || !session.IsOwner) return;
+        try
+        {
+            var result = await Sessions.GetResultAsync(session.Id);
+            _submitted = result.Survey.Any(s => s.SubmittedAtUtc.HasValue);
+            if (_submitted) return;
+            _definition = await Sessions.GetSurveyAsync(session.Id);
+            _answers = _definition.Questions.ToDictionary(q => q.Code, _ => "");
+        }
+        catch (ApiException ex) { _error = ex.Message; }
+    }
+    private async Task SubmitAsync()
+    {
+        if (_busy || _session is null || _definition is null) return;
+        if (_definition.Questions.Any(q => q.Required && string.IsNullOrWhiteSpace(_answers[q.Code]))) { _error = "Responde todas las preguntas obligatorias."; return; }
+        _busy = true; _error = null;
+        try { await Sessions.SubmitSurveyAsync(_session.Id, new(_definition.Id, new(_answers))); _submitted = true; }
+        catch (ApiException ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+}
