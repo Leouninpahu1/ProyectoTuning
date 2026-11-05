@@ -1,6 +1,5 @@
 # 5. Proceso de desarrollo
 
-Contenido previsto:
-- `spec-driven.md` (base: `DESARROLLO_GUIADO_POR_ESPECIFICACIONES_E_IA.md`; los specs se enlazan a `openspec/`)
-- `checklist-release.md` (base: `docs/checklist.md`)
-- `como-contribuir.md`: Git flow, commits y PRs
+- [spec-driven.md](spec-driven.md): desarrollo guiado por especificaciones y cómo se aplica con [OpenSpec](../../openspec/).
+- [checklist-release.md](checklist-release.md): verificación antes de cada demo o entrega.
+- [como-contribuir.md](como-contribuir.md): ramas, commits y PRs.
