@@ -49,7 +49,7 @@ Los participantes se registran en la Web. El registro público siempre concede `
 6. Contestar la encuesta. Un único envío guarda las respuestas definitivamente.
 7. Consultar resultados. Researcher y Administrator tienen consulta transversal; Participant sólo accede a su sesión y conserva oculta la condición.
 
-Ver el recorrido detallado en [docs/demo.md](docs/demo.md).
+Ver el recorrido detallado en [docs/3-api-e2e/recorrido-demo.md](docs/3-api-e2e/recorrido-demo.md).
 
 ## Validación
 

@@ -24,7 +24,7 @@ Usar antes de cada demo o entrega semanal. Marcar cada casilla con evidencia (lo
 - [*] `GET /api/health` responde `isHealthy: true`
 - [*] Flujo completo reproducible sin intervención manual oculta:
       register → login → create session → activate → conversation-turns → complete → survey → results
-- [*] Colección `docs/api/collection.json` importada y ejecutada de punta a punta sin errores
+- [*] Colección `docs/3-api-e2e/turning-api.postman_collection.json` importada y ejecutada de punta a punta sin errores
 
 ## 6. Documentación
 - [*] README actualizado con pasos reales de instalación y ejecución
