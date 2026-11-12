@@ -1,6 +1,6 @@
 # Diccionario de datos — Turning MVP
 
-Complementa a `docs/DIAGRAMA-ER-SQL-SERVER.md` (diagrama visual) con el detalle de
+Complementa a `docs/2-arquitectura/modelo-datos/diagrama-er.md` (diagrama visual) con el detalle de
 cada tabla y columna. Entregable GE-03 del plan individual de Gerson Torres (DBA).
 
 Convenciones generales:
@@ -35,6 +35,8 @@ condición (Human o AI) asociada a un usuario dueño.
 |---|---|---|
 | Id | uniqueidentifier (PK) | Identificador de la sesión. |
 | OwnerUserId | uniqueidentifier (FK → UserAccounts) | Usuario dueño de la sesión. |
+| InterlocutorUserId | uniqueidentifier (FK → UserAccounts, nullable) | Interlocutor humano asignado a la sesión (condición `Human`), si lo hay. |
+| InterlocutorJoinedAtUtc | datetime2 (nullable) | Momento en que el interlocutor se incorporó a la sesión. |
 | SessionCode | nvarchar(20) (UK) | Código corto legible (`EXP-XXXXXXXX`). |
 | Condition | nvarchar(20) | Condición experimental: `Human` o `AI`. |
 | Status | nvarchar(30) | Estado del ciclo de vida: `Created`, `Active`, `Completed`, `TimedOut`, `Cancelled`. |
@@ -51,6 +53,8 @@ condición (Human o AI) asociada a un usuario dueño.
 | RowVersion | rowversion | Control de concurrencia optimista (evita que dos procesos pisen la misma sesión). |
 
 **Restricción:** `SessionCode` es único en toda la tabla.
+
+**Interlocutor:** una sesión admite un solo interlocutor, y el dueño no puede ser su propio interlocutor.
 
 ---
 
@@ -113,10 +117,15 @@ turno de conversación específico.
 | ConversationTurnId | uniqueidentifier (FK → ConversationTurns, nullable) | Turno asociado, si la lectura ocurrió en un mensaje puntual. |
 | Source | nvarchar(30) | Origen de la detección (cámara, texto, etc.). |
 | Emotion | nvarchar(50) | Emoción detectada (alegría, tristeza, neutral, etc.). |
-| Score | float | Nivel de confianza/intensidad de la detección (0 a 1). |
+| Score | float | Intensidad de la emoción (0 a 1); es el valor que usa el avatar. No confundir con `Confidence`. |
 | CapturedAtUtc | datetime2 | Momento de la captura. |
 | Provider | nvarchar(100) | Proveedor/servicio que generó la lectura. |
 | IsDegraded | bit | Indica si la lectura se generó en modo degradado (fallback, sin proveedor real). |
+| Confidence | float | Qué tan segura es la detección (0 a 1), independiente de la intensidad. |
+| Polarity | float (nullable) | Valencia del texto, de -1 (negativa) a 1 (positiva). Nulo si no se calculó. |
+| ModelVersion | nvarchar(50) (nullable) | Versión del modelo o léxico que produjo la lectura, para poder reproducirla. |
+| ScoresJson | nvarchar(1000) (nullable) | Puntajes por emoción en formato JSON. |
+| AnalysisLatencyMs | int (nullable) | Tiempo que tardó el análisis, en milisegundos (evidencia de RF-AES-01). |
 
 **Nota:** `ConversationTurnId` es opcional a propósito — una lectura de emoción puede
 capturarse de forma continua (por ejemplo, por cámara) sin estar atada a un mensaje puntual.
@@ -212,16 +221,28 @@ tabla queda como trabajo futuro, fuera del alcance de esta entrega).
 
 ---
 
-## Índices relevantes (más allá de las PK/FK)
+## Índices relevantes (más allá de las PK)
 
 | Tabla | Índice | Propósito |
 |---|---|---|
+| UserAccounts | `NormalizedEmail` (único) | Evitar correos duplicados y acelerar el login. |
 | ExperimentSessions | `SessionCode` (único) | Búsqueda rápida por código legible. |
-| UserAccounts | `NormalizedEmail` (único) | Evitar correos duplicados y acelerar login. |
-| ConversationTurns | `ExperimentSessionId, SequenceNumber` (único) | Evitar turnos duplicados y ordenar la conversación eficientemente. |
+| ExperimentSessions | `OwnerUserId, CreatedAt` | Listar las sesiones de un usuario ordenadas por fecha. |
+| ExperimentSessions | `Status, ActivatedAtUtc` | Consultar sesiones por estado y momento de activación. |
+| ExperimentSessions | `InterlocutorUserId` | Consultar las sesiones donde un usuario es interlocutor. |
+| ExperimentSessions | `Condition, InterlocutorUserId, Status` | Buscar sesiones disponibles para emparejar con un interlocutor. |
+| ConditionAssignments | `SessionId` (único) | Una sesión solo puede tener una asignación de condición. |
+| ConversationTurns | `ExperimentSessionId, SequenceNumber` (único) | Evitar turnos duplicados y ordenar la conversación. |
+| EmotionReadings | `SessionId, CapturedAtUtc` | Lecturas de una sesión en orden de captura. |
+| AvatarExpressions | `SessionId, CreatedAt` | Expresiones del avatar de una sesión en orden. |
+| ExperimentEvents | `SessionId, OccurredAtUtc` | Eventos de una sesión en orden. |
+| SessionAuditEntries | `SessionId, OccurredAtUtc` | Auditoría de una sesión en orden. |
+| SurveyDefinitions | `Code` (único) | Evitar encuestas con el mismo código. |
+| SurveyQuestions | `SurveyDefinitionId, Order` (único) | Evitar dos preguntas en la misma posición de una encuesta. |
 | SurveyResponses | `SessionId, SurveyDefinitionId` (único) | Evitar respuestas duplicadas a la misma encuesta. |
 | SurveyAnswers | `SurveyResponseId, SurveyQuestionId` (único) | Evitar respuestas duplicadas a la misma pregunta. |
-| EmotionReadings / AvatarExpressions / ExperimentEvents / SessionAuditEntries | `SessionId` | Acelerar consultas de "todo lo relacionado con esta sesión". |
+
+Además, cada clave foránea que no queda cubierta por un índice compuesto de esta tabla tiene su propio índice simple (por ejemplo `EmotionReadingId` o `SurveyQuestionId`); esos no se listan aquí.
 
 ## Reglas de borrado
 
@@ -230,3 +251,4 @@ tabla queda como trabajo futuro, fuera del alcance de esta entrega).
 - `UserAccounts` y `SurveyDefinitions` **no** se eliminan en cascada: si se borra un
   usuario o una definición de encuesta, las sesiones/respuestas que los referencian
   no desaparecen automáticamente (evita pérdida accidental de datos históricos).
+- El interlocutor (`InterlocutorUserId`) usa `Restrict`: no se puede borrar un usuario mientras sea interlocutor de alguna sesión.
