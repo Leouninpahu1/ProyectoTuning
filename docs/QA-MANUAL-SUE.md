@@ -8,7 +8,7 @@
 | **Modalidad** | Individual: todos los QA ejecutan lo mismo. **≈ 5 h por ronda**, 2 rondas |
 | **Casos** | 33 casos de QA (27 P1, 6 P2) + 10 verificaciones API para desarrollo |
 
-**Reglas.** Solo se valida lo que el usuario ve y hace: nada de código, base de datos, logs ni contenedores, y no se despliega nada. El resultado esperado sale de los requisitos (`README.md`, `docs/demo.md`, `openspec/specs` y `openspec/changes/complete-experiment-workflow`). Si un requisito es ambiguo, el caso dice **(verificar)**: se anota lo observado y se consulta. Los textos entre «» son ejemplos del mensaje actual; si cambia el texto pero no el sentido, el caso pasa.
+**Reglas.** Solo se valida lo que el usuario ve y hace: nada de código, base de datos, logs ni contenedores, y no se despliega nada. El resultado esperado sale de los requisitos (`README.md`, `docs/3-api-e2e/recorrido-demo.md`, `openspec/specs` y `openspec/changes/complete-experiment-workflow`). Si un requisito es ambiguo, el caso dice **(verificar)**: se anota lo observado y se consulta. Los textos entre «» son ejemplos del mensaje actual; si cambia el texto pero no el sentido, el caso pasa.
 
 ---
 

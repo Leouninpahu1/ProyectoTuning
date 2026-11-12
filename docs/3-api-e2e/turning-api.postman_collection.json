@@ -1,0 +1,2044 @@
+{
+  "info": {
+    "name": "Turning API",
+    "description": "Flujo E2E y resto de los endpoints de la API. Requiere la API en Development por las cuentas demo. Ver docs/3-api-e2e/README.md.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5080/api"
+    },
+    {
+      "key": "adminEmail",
+      "value": "admin@turning.local"
+    },
+    {
+      "key": "researcherEmail",
+      "value": "researcher@turning.local"
+    },
+    {
+      "key": "demoPassword",
+      "value": "TurningDemo2026!"
+    },
+    {
+      "key": "participantPassword",
+      "value": "TurningDemo2026!"
+    },
+    {
+      "key": "resetToken",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Preparación",
+      "description": "Cuentas del recorrido: dos participantes nuevos y las cuentas demo que solo existen en Development.",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/health",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"API saludable\", function () { pm.expect(pm.response.json().isHealthy).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /auth/register (dueño)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/register",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Participante E2E\",\n  \"email\": \"{{ownerEmail}}\",\n  \"password\": \"{{participantPassword}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('ownerEmail', 'e2e-owner-' + Date.now() + '@turning.local');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "var json = pm.response.json();",
+                  "pm.test(\"Crea una cuenta Participant\", function () { pm.expect(json.user.role).to.eql('Participant'); });",
+                  "pm.collectionVariables.set('ownerToken', json.accessToken);",
+                  "pm.collectionVariables.set('ownerId', json.user.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /auth/register (interlocutor)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/register",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Interlocutor E2E\",\n  \"email\": \"{{partnerEmail}}\",\n  \"password\": \"{{participantPassword}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('partnerEmail', 'e2e-partner-' + Date.now() + '@turning.local');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "var json = pm.response.json();",
+                  "pm.test(\"Crea una cuenta Participant\", function () { pm.expect(json.user.role).to.eql('Participant'); });",
+                  "pm.collectionVariables.set('partnerToken', json.accessToken);",
+                  "pm.collectionVariables.set('partnerId', json.user.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /auth/login (dueño)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{ownerEmail}}\",\n  \"password\": \"{{participantPassword}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "var json = pm.response.json();",
+                  "pm.test(\"Devuelve accessToken\", function () { pm.expect(json.accessToken).to.exist; });",
+                  "pm.collectionVariables.set('ownerToken', json.accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /auth/me",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/auth/me",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Es la cuenta del token\", function () { pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get('ownerId')); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /auth/login (researcher demo)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{researcherEmail}}\",\n  \"password\": \"{{demoPassword}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "var json = pm.response.json();",
+                  "pm.test(\"Rol Researcher\", function () { pm.expect(json.user.role).to.eql('Researcher'); });",
+                  "pm.collectionVariables.set('researcherToken', json.accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /auth/login (admin demo)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{demoPassword}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "var json = pm.response.json();",
+                  "pm.test(\"Rol Administrator\", function () { pm.expect(json.user.role).to.eql('Administrator'); });",
+                  "pm.collectionVariables.set('adminToken', json.accessToken);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Obtener una sesión de cada condición",
+      "description": "El backend asigna Human o AI por balance y no atiende preferencias, y el dueño ve la condición como Hidden. Por eso se crean sesiones hasta tener una de cada una y la condición se consulta con la cuenta researcher.",
+      "item": [
+        {
+          "name": "POST /sessions",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/sessions",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', function () { pm.response.to.have.status(201); });",
+                  "var json = pm.response.json();",
+                  "pm.test(\"El dueño no ve la condición\", function () { pm.expect(json.condition).to.eql('Hidden'); pm.expect(json.participationRole).to.eql('Owner'); });",
+                  "pm.test(\"Estado Created\", function () { pm.expect(json.status).to.eql('Created'); });",
+                  "pm.collectionVariables.set('candidateSessionId', json.id);",
+                  "pm.collectionVariables.set('candidateSessionCode', json.sessionCode);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /sessions/:id (researcher resuelve la condición)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/sessions/{{candidateSessionId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{researcherToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "var json = pm.response.json();",
+                  "pm.test(\"El researcher ve la condición real\", function () { pm.expect(['Human', 'AI']).to.include(json.condition); });",
+                  "var vars = pm.collectionVariables;",
+                  "if (json.condition === 'Human' && !vars.get('humanSessionId')) { vars.set('humanSessionId', json.id); vars.set('humanSessionCode', json.sessionCode); }",
+                  "if (json.condition === 'AI' && !vars.get('aiSessionId')) { vars.set('aiSessionId', json.id); }",
+                  "var attempts = Number(vars.get('assignmentAttempts') || 0) + 1;",
+                  "vars.set('assignmentAttempts', attempts);",
+                  "if (!vars.get('humanSessionId') || !vars.get('aiSessionId')) {",
+                  "  pm.test('Hay sesiones de ambas condiciones en 50 intentos', function () { pm.expect(attempts).to.be.below(50); });",
+                  "  if (attempts < 50) { postman.setNextRequest('POST /sessions'); }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Flujo E2E, condición Human",
+      "description": "Dos personas: registro, unión por código, activación, conversación, cierre, encuesta y resultados.",
+      "item": [
+        {
+          "name": "GET /sessions/awaiting-interlocutor",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/sessions/awaiting-interlocutor?page=1&pageSize=50",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{researcherToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Devuelve una página\", function () { pm.expect(pm.response.json().items).to.be.an('array'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /sessions/join",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/sessions/join",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{partnerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sessionCode\": \"{{humanSessionCode}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Entra como interlocutor\", function () { pm.expect(pm.response.json().participationRole).to.eql('Interlocutor'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /experiment-sessions/:id/conversation-turns (interlocutor antes de iniciar)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/experiment-sessions/{{humanSessionId}}/conversation-turns",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{partnerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"Intento abrir la sesión\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409', function () { pm.response.to.have.status(409); });",
+                  "pm.test(\"Error SESSION_NOT_STARTED\", function () { pm.expect(pm.response.json().error).to.eql('SESSION_NOT_STARTED'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /sessions/:id/activate (Human)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/sessions/{{humanSessionId}}/activate",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "var json = pm.response.json();",
+                  "pm.test(\"Estado Active con vencimiento\", function () { pm.expect(json.status).to.eql('Active'); pm.expect(json.expiresAtUtc).to.exist; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /experiment-sessions/:id/conversation-turns (dueño, Human)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/experiment-sessions/{{humanSessionId}}/conversation-turns",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"Hola, quisiera conversar.\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "var json = pm.response.json();",
+                  "pm.test(\"Emisor Participant sin revelar el origen\", function () { pm.expect(json.sender).to.eql('Participant'); pm.expect(json.source).to.eql('pending'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /experiment-sessions/:id/conversation-turns (interlocutor)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/experiment-sessions/{{humanSessionId}}/conversation-turns",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{partnerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"Aquí estoy, te escucho.\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Emisor Interlocutor\", function () { pm.expect(pm.response.json().sender).to.eql('Interlocutor'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /experiment-sessions/:id/conversation-turns?afterSequence",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/experiment-sessions/{{humanSessionId}}/conversation-turns?afterSequence=1",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "var json = pm.response.json();",
+                  "pm.test(\"El sondeo entrega el turno del interlocutor\", function () { pm.expect(json).to.have.lengthOf(1); pm.expect(json[0].sender).to.eql('Interlocutor'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE /sessions/:id/interlocutor",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/sessions/{{humanSessionId}}/interlocutor",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{researcherToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Queda sin interlocutor\", function () { pm.expect(pm.response.json().hasInterlocutor).to.eql(false); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /sessions/:id/interlocutor",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/sessions/{{humanSessionId}}/interlocutor",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"interlocutorUserId\": \"{{partnerId}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Queda con interlocutor\", function () { pm.expect(pm.response.json().hasInterlocutor).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /sessions/:id/complete (Human)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/sessions/{{humanSessionId}}/complete",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Estado Completed\", function () { pm.expect(pm.response.json().status).to.eql('Completed'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /sessions/:id/events (Human)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/sessions/{{humanSessionId}}/events",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "var json = pm.response.json();",
+                  "var types = json.map(function (e) { return e.type; });",
+                  "pm.test(\"Publica el cierre y la encuesta\", function () { pm.expect(types).to.include('SessionEnded'); pm.expect(types).to.include('SurveyAvailable'); });",
+                  "pm.collectionVariables.set('lastEventId', json[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /sessions/:id/events?after",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/sessions/{{humanSessionId}}/events?after={{lastEventId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Devuelve una lista\", function () { pm.expect(pm.response.json()).to.be.an('array'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /sessions/:id/survey (Human)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/sessions/{{humanSessionId}}/survey",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "var json = pm.response.json();",
+                  "pm.test(\"Encuesta con cuatro preguntas\", function () { pm.expect(json.questions).to.have.lengthOf(4); });",
+                  "pm.collectionVariables.set('surveyDefinitionId', json.id);",
+                  "var answers = {};",
+                  "json.questions.forEach(function (q) { answers[q.code] = q.type === 'choice' ? 'Human' : q.type === 'scale' ? '4' : 'Respuesta de la colección E2E.'; });",
+                  "pm.collectionVariables.set('surveyAnswersJson', JSON.stringify(answers));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /sessions/:id/survey/responses (Human)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/sessions/{{humanSessionId}}/survey/responses",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"surveyDefinitionId\": \"{{surveyDefinitionId}}\",\n  \"answers\": {{surveyAnswersJson}}\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', function () { pm.response.to.have.status(201); });",
+                  "pm.test(\"Devuelve responseId\", function () { pm.expect(pm.response.json().responseId).to.exist; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /sessions/:id/results como dueño (Human)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/sessions/{{humanSessionId}}/results",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "var json = pm.response.json();",
+                  "pm.test(\"Mantiene oculta la condición\", function () { pm.expect(json.session.condition).to.eql('Hidden'); });",
+                  "pm.test(\"Encuesta enviada con cuatro respuestas\", function () { pm.expect(json.survey[0].submittedAtUtc).to.exist; pm.expect(json.survey[0].answers).to.have.lengthOf(4); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /sessions/:id/survey/responses (segundo envío)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/sessions/{{humanSessionId}}/survey/responses",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"surveyDefinitionId\": \"{{surveyDefinitionId}}\",\n  \"answers\": {{surveyAnswersJson}}\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409', function () { pm.response.to.have.status(409); });",
+                  "pm.test(\"Error ALREADY_SUBMITTED\", function () { pm.expect(pm.response.json().error).to.eql('ALREADY_SUBMITTED'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Flujo E2E, condición AI",
+      "description": "Una persona conversa con la respuesta generada. Sin claves de proveedor responde el adaptador por reglas.",
+      "item": [
+        {
+          "name": "POST /sessions/:id/activate (AI)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/sessions/{{aiSessionId}}/activate",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Estado Active\", function () { pm.expect(pm.response.json().status).to.eql('Active'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /experiment-sessions/:id/conversation-turns (dueño, AI)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/experiment-sessions/{{aiSessionId}}/conversation-turns",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"Me alegra poder conversar.\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "var json = pm.response.json();",
+                  "pm.test(\"No revela proveedor ni origen\", function () { pm.expect(json.source).to.eql('pending'); pm.expect(json.ai).to.eql(null); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /experiment-sessions/:id/conversation-turns",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/experiment-sessions/{{aiSessionId}}/conversation-turns",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "var json = pm.response.json();",
+                  "pm.test(\"Mensaje y respuesta en secuencia\", function () { pm.expect(json).to.have.lengthOf(2); pm.expect(json[1].sender).to.eql('Interlocutor'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /sessions/:id/complete (AI)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/sessions/{{aiSessionId}}/complete",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Estado Completed\", function () { pm.expect(pm.response.json().status).to.eql('Completed'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /sessions/:id/survey (AI)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/sessions/{{aiSessionId}}/survey",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "var json = pm.response.json();",
+                  "pm.test(\"Encuesta con cuatro preguntas\", function () { pm.expect(json.questions).to.have.lengthOf(4); });",
+                  "pm.collectionVariables.set('surveyDefinitionId', json.id);",
+                  "var answers = {};",
+                  "json.questions.forEach(function (q) { answers[q.code] = q.type === 'choice' ? 'AI' : q.type === 'scale' ? '4' : 'Respuesta de la colección E2E.'; });",
+                  "pm.collectionVariables.set('surveyAnswersJson', JSON.stringify(answers));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /sessions/:id/survey/responses (AI)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/sessions/{{aiSessionId}}/survey/responses",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"surveyDefinitionId\": \"{{surveyDefinitionId}}\",\n  \"answers\": {{surveyAnswersJson}}\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', function () { pm.response.to.have.status(201); });",
+                  "pm.test(\"Devuelve responseId\", function () { pm.expect(pm.response.json().responseId).to.exist; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /sessions/:id/results como dueño (AI)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/sessions/{{aiSessionId}}/results",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "var json = pm.response.json();",
+                  "pm.test(\"Mantiene oculta la condición\", function () { pm.expect(json.session.condition).to.eql('Hidden'); });",
+                  "pm.test(\"Encuesta enviada con cuatro respuestas\", function () { pm.expect(json.survey[0].submittedAtUtc).to.exist; pm.expect(json.survey[0].answers).to.have.lengthOf(4); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /sessions/:id/results como researcher",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/sessions/{{aiSessionId}}/results",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{researcherToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"El researcher ve la condición real\", function () { pm.expect(pm.response.json().session.condition).to.eql('AI'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Resto de la API",
+      "description": "Endpoints fuera del camino principal: arranque rápido, emociones, avatar, consultas y administración.",
+      "item": [
+        {
+          "name": "GET /health/status",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/health/status?message=Postman%20check",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /experiment-sessions/bootstrap",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/experiment-sessions/bootstrap",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "pm.collectionVariables.set('extraSessionId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /experiment-sessions/latest",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/experiment-sessions/latest",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Es la última sesión creada\", function () { pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get('extraSessionId')); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /sessions/:id (dueño)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/sessions/{{extraSessionId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /sessions/participant/:participantId",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/sessions/participant/{{ownerId}}?page=1&pageSize=50",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Lista las sesiones del dueño\", function () { pm.expect(pm.response.json().total).to.be.above(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /sessions/:id/activate (emociones)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/sessions/{{extraSessionId}}/activate",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /sessions/:id/emotions",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/sessions/{{extraSessionId}}/emotions",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"emotion\": \"joy\",\n  \"score\": 0.7,\n  \"source\": \"self-report\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', function () { pm.response.to.have.status(201); });",
+                  "pm.test(\"Devuelve lectura y avatar\", function () { pm.expect(pm.response.json().emo.emotion).to.eql('joy'); pm.expect(pm.response.json().ava).to.exist; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /sessions/:id/emotions",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/sessions/{{extraSessionId}}/emotions",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Incluye la lectura\", function () { pm.expect(pm.response.json()).to.have.lengthOf(1); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /sessions/:id/avatar/current",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/sessions/{{extraSessionId}}/avatar/current",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Refleja la última lectura\", function () { pm.expect(pm.response.json().expressionName).to.eql('Joy'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /sessions/:id/cancel",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/sessions/{{extraSessionId}}/cancel",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Cancelada por la colección E2E\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Estado Cancelled\", function () { pm.expect(pm.response.json().status).to.eql('Cancelled'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /results",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/results?condition=AI&page=1&pageSize=20",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{researcherToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Solo sesiones AI\", function () { pm.response.json().items.forEach(function (s) { pm.expect(s.condition).to.eql('AI'); }); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /surveys/results",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/surveys/results?page=1&pageSize=20&participantId={{ownerId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{researcherToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Encuestas enviadas por el dueño\", function () { pm.expect(pm.response.json().total).to.eql(2); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /auth/forgot-password",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/forgot-password",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{ownerEmail}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 202', function () { pm.response.to.have.status(202); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /auth/register (cuenta para cambio de rol)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/register",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Cuenta Roles E2E\",\n  \"email\": \"{{roleUserEmail}}\",\n  \"password\": \"{{participantPassword}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('roleUserEmail', 'e2e-roleUser-' + Date.now() + '@turning.local');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "var json = pm.response.json();",
+                  "pm.test(\"Crea una cuenta Participant\", function () { pm.expect(json.user.role).to.eql('Participant'); });",
+                  "pm.collectionVariables.set('roleUserToken', json.accessToken);",
+                  "pm.collectionVariables.set('roleUserId', json.user.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /auth/users",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/auth/users?q={{roleUserEmail}}&page=1&pageSize=20",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Encuentra la cuenta\", function () { pm.expect(pm.response.json().total).to.eql(1); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PUT /auth/users/:userId/role",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/auth/users/{{roleUserId}}/role",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"Researcher\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Rol Researcher\", function () { pm.expect(pm.response.json().role).to.eql('Researcher'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /auth/me (token anterior al cambio de rol)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/auth/me",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{roleUserToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', function () { pm.response.to.have.status(401); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Reglas de acceso",
+      "description": "Lo que la API debe rechazar. `scripts/verify-workflow.ps1` cubre más casos.",
+      "item": [
+        {
+          "name": "POST /auth/register (rol privilegiado)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/register",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Intento\",\n  \"email\": \"{{ownerEmail}}\",\n  \"password\": \"{{participantPassword}}\",\n  \"role\": \"Administrator\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', function () { pm.response.to.have.status(403); });",
+                  "pm.test(\"Error AUTH_ROLE_FORBIDDEN\", function () { pm.expect(pm.response.json().error).to.eql('AUTH_ROLE_FORBIDDEN'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /auth/register (correo repetido)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/register",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Duplicado\",\n  \"email\": \"{{ownerEmail}}\",\n  \"password\": \"{{participantPassword}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409', function () { pm.response.to.have.status(409); });",
+                  "pm.test(\"Error AUTH_USER_ALREADY_EXISTS\", function () { pm.expect(pm.response.json().error).to.eql('AUTH_USER_ALREADY_EXISTS'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /sessions/:id (sesión ajena)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/sessions/{{aiSessionId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{partnerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', function () { pm.response.to.have.status(404); });",
+                  "pm.test(\"Error SESSION_NOT_FOUND\", function () { pm.expect(pm.response.json().error).to.eql('SESSION_NOT_FOUND'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /experiment-sessions/:id/conversation-turns (researcher observa)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/experiment-sessions/{{aiSessionId}}/conversation-turns",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{researcherToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"Observador\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', function () { pm.response.to.have.status(404); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /experiment-sessions/:id/conversation-turns (sesión terminada)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/experiment-sessions/{{aiSessionId}}/conversation-turns",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"Tardío\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409', function () { pm.response.to.have.status(409); });",
+                  "pm.test(\"Error SESSION_TERMINAL\", function () { pm.expect(pm.response.json().error).to.eql('SESSION_TERMINAL'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /sessions/:id/complete (researcher observa)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/sessions/{{aiSessionId}}/complete",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{researcherToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', function () { pm.response.to.have.status(404); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /results (participante)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/results",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', function () { pm.response.to.have.status(403); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /sessions/:id/cancel (participante)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/sessions/{{aiSessionId}}/cancel",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ownerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Sin permiso\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', function () { pm.response.to.have.status(403); });",
+                  "// Fin de la corrida automática: la carpeta manual necesita un token de correo.",
+                  "postman.setNextRequest(null);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Manual: reset-password",
+      "description": "Queda fuera de la corrida automática porque el token llega por correo. En Development el correo queda como .eml en %LOCALAPPDATA%\\Turning\\mail: ábrelo con un cliente de correo y copia el token del enlace en la variable resetToken antes de ejecutar esta petición.",
+      "item": [
+        {
+          "name": "POST /auth/reset-password",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/reset-password",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{resetToken}}\",\n  \"newPassword\": \"{{participantPassword}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204', function () { pm.response.to.have.status(204); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

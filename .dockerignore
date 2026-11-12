@@ -15,7 +15,6 @@ tests/
 docs/
 specs/
 openspec/
-postman/
 data/
 *.md
 AI_HANDOFF.md
