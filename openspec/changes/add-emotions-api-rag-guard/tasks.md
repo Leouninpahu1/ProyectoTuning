@@ -15,9 +15,9 @@
 
 ## 3. Despliegue y documentación
 
-- [ ] 3.1 Versionar `deploy/sue-llm/Dockerfile` y documentar `EmotionsApi__*`, `Guard__*` y los contenedores `sue-emotions` y `sue-llm` en `docs/deploy.md` y `docs/configuracion-secretos.md`. Verificar que `docker build` de ambas imágenes termina.
+- [x] 3.1 Versionar `deploy/sue-llm/Dockerfile` y documentar `EmotionsApi__*`, `Guard__*` y los contenedores `sue-emotions` y `sue-llm` en `docs/deploy.md` y `docs/configuracion-secretos.md`. Verificar que `docker build` de ambas imágenes termina.
 - [x] 3.2 Ejecutar las suites en el contenedor Linux y `openspec validate add-emotions-api-rag-guard --strict`. Verificar que pasan, salvo las pruebas que requieren LocalDB.
-- [ ] 3.3 Desplegar `sue-emotions`, `sue-llm` con embeddings y el API en Azure. Verificar `GET /health/ready` de `sue-emotions`, la cadena de IA en el arranque del API y que una frase de crisis enviada al filtro devuelve la respuesta aprobada.
+- [ ] 3.3 Desplegar `sue-emotions`, `sue-llm` con embeddings y el API en Azure. Verificar `GET /health/ready` de `sue-emotions`, la cadena de IA en el arranque del API y que una frase de crisis enviada al filtro devuelve la respuesta aprobada. Hecho el 2026-11-12 (API 0.5.1-20261112-154751): `sue-emotions` ready con texto y visión; arranque del API con `local -> rule-based` e «Índice del filtro listo: 67 ejemplos»; qwen2.5:1.5b responde en 5.6–7.1 s sin historial desde dentro del entorno. Falta la prueba de punta a punta con una sesión AI real (frase de crisis), que necesita una cuenta en producción.
 
 ## Workflow follow-up
 
