@@ -34,7 +34,7 @@ public class EmotionsApiTextClassifierTests
         var result = await classifier.ClassifyAsync("me da miedo salir");
 
         handler.Method.Should().Be(HttpMethod.Post);
-        handler.Uri!.AbsoluteUri.Should().Be("http://sue-emotions/emotions/text");
+        handler.Uri!.AbsoluteUri.Should().Be("http://sue-emotions/api/v1/emotions/text");
         handler.Authorization.Should().Be($"Bearer {Token}");
         using (var body = JsonDocument.Parse(handler.Body!))
         {

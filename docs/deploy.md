@@ -27,7 +27,7 @@ Contenedores internos de apoyo (ingreso interno, una réplica fija):
 | Servicio | Contexto de build | Puerto | Recursos | Para qué |
 |---|---|---|---|---|
 | sue-llm | `deploy/sue-llm` | 11434 | 4 vCPU / 8 GiB | Ollama solo CPU: `qwen2.5:1.5b` responde la condición AI y `paraphrase-multilingual` da los embeddings del filtro RAG |
-| sue-emotions | `services/emotions-api` (código de Héctor, sin cambios) | 8000 | 2 vCPU / 4 GiB | Emoción del texto del participante (`POST /emotions/text`); descarga sus modelos de Hugging Face al arrancar |
+| sue-emotions | `services/emotions-api` (código de Héctor, sin cambios) | 8000 | 2 vCPU / 4 GiB | Emoción del texto del participante (`POST /api/v1/emotions/text`); descarga sus modelos de Hugging Face al arrancar |
 
 ## Configuración (solo nombres; los valores no van en el repositorio ni en la imagen)
 

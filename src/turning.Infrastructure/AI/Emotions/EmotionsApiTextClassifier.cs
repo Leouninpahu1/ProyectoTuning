@@ -27,7 +27,7 @@ public sealed class EmotionsApiOptions
 }
 
 /// <summary>
-/// Clasifica el texto con <c>POST /emotions/text</c> de la API de emociones y traduce sus siete
+/// Clasifica el texto con <c>POST /api/v1/emotions/text</c> de la API de emociones y traduce sus siete
 /// clases al vocabulario de SUE. Cualquier fallo devuelve <c>null</c> para que el servicio use el léxico.
 /// </summary>
 public sealed class EmotionsApiTextClassifier : ITextEmotionClassifierPort
@@ -70,7 +70,7 @@ public sealed class EmotionsApiTextClassifier : ITextEmotionClassifierPort
 
         try
         {
-            using var request = new HttpRequestMessage(HttpMethod.Post, new Uri(baseUri, "emotions/text"))
+            using var request = new HttpRequestMessage(HttpMethod.Post, new Uri(baseUri, "api/v1/emotions/text"))
             {
                 Content = JsonContent.Create(new { text, language = "es" })
             };

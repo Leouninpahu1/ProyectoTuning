@@ -6,7 +6,7 @@ La emoción de cada mensaje del participante sale hoy de un léxico simulado, au
 
 ## What Changes
 
-- SUE clasifica la emoción del texto del participante con la API de emociones (`POST /emotions/text`); si la API no está configurada o falla, usa el léxico actual.
+- SUE clasifica la emoción del texto del participante con la API de emociones (`POST /api/v1/emotions/text`); si la API no está configurada o falla, usa el léxico actual.
 - El vocabulario de emociones de SUE se amplía con `fear` y `disgust`, que devuelve la API. El avatar las muestra como `Neutral`, como ya hace con `confusion`.
 - Nuevo filtro RAG antes del modelo de lenguaje en la condición `AI`: busca el mensaje en una base de conocimiento corta y versionada.
   - Si coincide con una regla de bloqueo, responde un texto aprobado sin llamar al modelo.

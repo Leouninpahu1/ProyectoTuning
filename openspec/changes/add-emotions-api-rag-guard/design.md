@@ -3,7 +3,7 @@
 ## Context
 
 - `ConversationTurnService` llama a `ITextEmotionAnalysisService.Analyze` (síncrono, léxico del dominio `TextEmotionAnalyzer`) sobre el turno del participante, persiste la lectura y pasa un `EmotionContext` a `ConversationOrchestrator`, que construye la `TextGenerationRequest` y llama a `ITextGenerationPort`. Es el único llamador del análisis de texto.
-- La API de Héctor (`services/emotions-api`, FastAPI) expone `POST /emotions/text` con Bearer, devuelve `emotion` (7 clases en mayúsculas), `confidence`, `probabilities`, `modelVersions.text` y limita a 60 peticiones por minuto e IP (configurable con `RATE_LIMIT_PER_MINUTE`). Descarga los modelos de Hugging Face al arrancar.
+- La API de Héctor (`services/emotions-api`, FastAPI) expone `POST /api/v1/emotions/text` con Bearer, devuelve `emotion` (7 clases en mayúsculas), `confidence`, `probabilities`, `modelVersions.text` y limita a 60 peticiones por minuto e IP (configurable con `RATE_LIMIT_PER_MINUTE`). Descarga los modelos de Hugging Face al arrancar.
 - `EventProjection.ToDto` filtra el payload del participante con una lista blanca: un campo nuevo en `AiReplyGenerated` queda oculto sin tocarla.
 - `sue-llm` (Ollama) ya sirve `qwen2.5:1.5b`; Ollama también sirve embeddings en `POST /api/embed`.
 
