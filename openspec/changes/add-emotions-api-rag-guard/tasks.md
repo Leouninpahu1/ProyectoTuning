@@ -1,0 +1,24 @@
+# Tasks
+
+## 1. Emociones de la API de Héctor
+
+- [x] 1.1 Añadir `fear` y `disgust` a `EmotionLabel.All` y las etiquetas «Miedo» y «Asco» en la Web (`Admin.razor`, `Results.razor`, `Emotions.razor`, `EmotionDistributionChart.razor`). Verificar con pruebas del dominio que ambas son conocidas y que el avatar las deriva a `Neutral` con fallback.
+- [x] 1.2 Crear `ITextEmotionClassifierPort` y convertir `ITextEmotionAnalysisService` a `AnalyzeAsync`, con respaldo al léxico, intensidad y polaridad de la API; actualizar `ConversationTurnService`. Verificar con pruebas de Application: resultado de la API mapeado, puerto nulo o que lanza → léxico, polaridad e intensidad acotadas.
+- [x] 1.3 Implementar `EmotionsApiTextClassifier` con `EmotionsApi:*`. Verificar con pruebas de Infrastructure con un `HttpMessageHandler` falso: ruta, cuerpo, Bearer, mapeo de las 7 clases, `null` sin `BaseUrl`, ante `401`/`503`, tiempo límite y clase desconocida, y que el log no contiene token ni texto.
+
+## 2. Filtro RAG
+
+- [x] 2.1 Escribir la base `conversation-guard-es.json` (reglas de bloqueo, pautas por tema y por emoción) y su carga validada. Verificar con pruebas que la base incluida carga y que una regla sin respuesta falla con su id.
+- [x] 2.2 Crear `IConversationGuard`, `GuardDecision`, `TextGenerationRequest.Guidance` y su uso en `ConversationOrchestrator` y `OpenAiCompatibleTextGenerationProvider`; añadir `guard` al evento `AiReplyGenerated`. Verificar con pruebas: bloqueo sin llamar al puerto de generación, pautas en la instrucción de sistema, condición `Human` sin filtro. El campo `guard` queda fuera de la lista blanca de `EventProjection`; su prueba de proyección (`Events_HideProviderAndAiConditionFromParticipant`) necesita LocalDB y no corrió en Linux.
+- [x] 2.3 Implementar `RagConversationGuard` y el cliente de embeddings de Ollama con `Guard:*`, más el respaldo por palabras clave. Verificar con pruebas con embeddings falsos: bloqueo sobre el umbral, pautas por tema y emoción, palabras clave cuando el cliente falla o no está configurado.
+- [ ] 2.4 Calibrar `Guard:BlockThreshold` y `Guard:GuideThreshold` contra `paraphrase-multilingual` con frases positivas y negativas por regla, y fijarlos como valores por defecto de `GuardOptions`. Verificar que ninguna frase negativa del set bloquea y que todas las de crisis lo hacen. Resultado (2026-11-12, umbrales 0.76 y 0.65): 0 de 21 negativas bloquean; crisis 4 de 5 contando palabras clave (pasa la ambigua «a veces siento que no quiero estar aquí»); pasan también «¿esto lo escribe una computadora?» y «pásame tu dirección». Pendiente de que el equipo decida si amplía la base o acepta esos casos.
+
+## 3. Despliegue y documentación
+
+- [ ] 3.1 Versionar `deploy/sue-llm/Dockerfile` y documentar `EmotionsApi__*`, `Guard__*` y los contenedores `sue-emotions` y `sue-llm` en `docs/deploy.md` y `docs/configuracion-secretos.md`. Verificar que `docker build` de ambas imágenes termina.
+- [x] 3.2 Ejecutar las suites en el contenedor Linux y `openspec validate add-emotions-api-rag-guard --strict`. Verificar que pasan, salvo las pruebas que requieren LocalDB.
+- [ ] 3.3 Desplegar `sue-emotions`, `sue-llm` con embeddings y el API en Azure. Verificar `GET /health/ready` de `sue-emotions`, la cadena de IA en el arranque del API y que una frase de crisis enviada al filtro devuelve la respuesta aprobada.
+
+## Workflow follow-up
+
+- Archivar el cambio cuando el equipo revise las reglas, confirme las líneas de ayuda y quede desplegado.
