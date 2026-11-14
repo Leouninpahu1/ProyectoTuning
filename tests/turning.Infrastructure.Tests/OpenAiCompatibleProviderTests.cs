@@ -152,6 +152,17 @@ public class OpenAiCompatibleProviderTests
     }
 
     [Fact]
+    public async Task GenerateAsync_ShouldIncludeTheGuardGuidanceInTheSystemPrompt()
+    {
+        var handler = new StubHandler().Enqueue(HttpStatusCode.OK, SuccessBody);
+        var request = Request() with { Guidance = ["Valida la perdida sin minimizarla."] };
+
+        await CreateProvider(handler).GenerateAsync(request, CancellationToken.None);
+
+        handler.CapturedBodies.Single().Should().Contain("Valida la perdida sin minimizarla.");
+    }
+
+    [Fact]
     public async Task GenerateAsync_ShouldNotRetry_WhenCredentialsAreInvalid()
     {
         var handler = new StubHandler()

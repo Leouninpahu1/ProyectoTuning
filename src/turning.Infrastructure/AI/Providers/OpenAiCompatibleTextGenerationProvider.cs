@@ -191,16 +191,22 @@ public sealed class OpenAiCompatibleTextGenerationProvider : ITextGenerationProv
     }
 
     /// <summary>
-    /// Añade el contexto emocional a la instrucción de sistema (RF-EXP-01).
+    /// Añade el contexto emocional (RF-EXP-01) y las pautas recuperadas por el filtro a la instrucción de sistema.
     /// </summary>
     private string BuildSystemPrompt(TextGenerationRequest request)
     {
-        if (request.EmotionContext is null)
-            return _systemPrompt;
+        var prompt = _systemPrompt;
 
-        var emotion = request.EmotionContext;
-        return $"{_systemPrompt} El último mensaje del participante transmite {emotion.EmotionId} " +
-               $"con intensidad {emotion.Intensity:0.00}. Ten en cuenta ese estado emocional al responder.";
+        if (request.EmotionContext is { } emotion)
+        {
+            prompt += $" El último mensaje del participante transmite {emotion.EmotionId} " +
+                      $"con intensidad {emotion.Intensity:0.00}. Ten en cuenta ese estado emocional al responder.";
+        }
+
+        if (request.Guidance.Count > 0)
+            prompt += " Pautas para esta respuesta: " + string.Join(" ", request.Guidance.Select(guide => $"- {guide}"));
+
+        return prompt;
     }
 
     private static (string? Text, string? Model) ParseCompletion(string body)
